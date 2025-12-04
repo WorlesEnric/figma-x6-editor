@@ -1,0 +1,96 @@
+:root {
+    /* Color Palette - Dark Theme inspired by Figma */
+    --color-bg-primary: #1e1e1e;
+    --color-bg-secondary: #2c2c2c;
+    --color-bg-tertiary: #383838;
+    --color-bg-elevated: #3c3c3c;
+    --color-bg-hover: #4a4a4a;
+    --color-bg-active: #5a5a5a;
+    
+    /* Canvas */
+    --color-canvas: #1a1a1a;
+    --color-canvas-grid: #2a2a2a;
+    
+    /* Borders */
+    --color-border: #404040;
+    --color-border-subtle: #333333;
+    --color-border-focus: #0d99ff;
+    
+    /* Text */
+    --color-text-primary: #ffffff;
+    --color-text-secondary: #b3b3b3;
+    --color-text-tertiary: #808080;
+    --color-text-disabled: #5c5c5c;
+    
+    /* Accent Colors */
+    --color-accent: #0d99ff;
+    --color-accent-hover: #0b85e0;
+    --color-accent-muted: rgba(13, 153, 255, 0.15);
+    
+    /* Status Colors */
+    --color-success: #14ae5c;
+    --color-warning: #ffab00;
+    --color-error: #f24822;
+    
+    /* Selection */
+    --color-selection: #0d99ff;
+    --color-selection-fill: rgba(13, 153, 255, 0.1);
+    
+    /* Shadows */
+    --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.3);
+    --shadow-md: 0 4px 12px rgba(0, 0, 0, 0.4);
+    --shadow-lg: 0 8px 24px rgba(0, 0, 0, 0.5);
+    --shadow-dropdown: 0 4px 16px rgba(0, 0, 0, 0.5);
+    
+    /* Spacing */
+    --spacing-xs: 4px;
+    --spacing-sm: 8px;
+    --spacing-md: 12px;
+    --spacing-lg: 16px;
+    --spacing-xl: 24px;
+    --spacing-2xl: 32px;
+    
+    /* Border Radius */
+    --radius-sm: 4px;
+    --radius-md: 6px;
+    --radius-lg: 8px;
+    --radius-xl: 12px;
+    --radius-full: 9999px;
+    
+    /* Typography */
+    --font-family: 'DM Sans', -apple-system, BlinkMacSystemFont, sans-serif;
+    --font-mono: 'JetBrains Mono', monospace;
+    
+    --font-size-xs: 10px;
+    --font-size-sm: 11px;
+    --font-size-md: 12px;
+    --font-size-lg: 13px;
+    --font-size-xl: 14px;
+    
+    --font-weight-normal: 400;
+    --font-weight-medium: 500;
+    --font-weight-semibold: 600;
+    
+    --line-height-tight: 1.2;
+    --line-height-normal: 1.4;
+    --line-height-relaxed: 1.6;
+    
+    /* Layout */
+    --toolbar-height: 48px;
+    --left-panel-width: 240px;
+    --right-panel-width: 260px;
+    --minimap-width: 200px;
+    --minimap-height: 140px;
+    
+    /* Z-Index */
+    --z-panel: 10;
+    --z-toolbar: 20;
+    --z-dropdown: 30;
+    --z-modal: 40;
+    --z-tooltip: 50;
+    
+    /* Transitions */
+    --transition-fast: 0.1s ease;
+    --transition-normal: 0.2s ease;
+    --transition-slow: 0.3s ease;
+  }

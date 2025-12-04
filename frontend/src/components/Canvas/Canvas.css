@@ -1,0 +1,101 @@
+.canvas-container {
+    width: 100%;
+    height: 100%;
+    position: relative;
+    overflow: hidden;
+  }
+  
+  /* Tool-specific cursors */
+  .canvas-container[data-tool="select"] {
+    cursor: default;
+  }
+  
+  .canvas-container[data-tool="hand"] {
+    cursor: grab;
+  }
+  
+  .canvas-container[data-tool="hand"]:active {
+    cursor: grabbing;
+  }
+  
+  .canvas-container[data-tool="rectangle"],
+  .canvas-container[data-tool="ellipse"],
+  .canvas-container[data-tool="diamond"],
+  .canvas-container[data-tool="triangle"],
+  .canvas-container[data-tool="frame"] {
+    cursor: crosshair;
+  }
+  
+  .canvas-container[data-tool="text"] {
+    cursor: text;
+  }
+  
+  .canvas-container[data-tool="line"],
+  .canvas-container[data-tool="arrow"] {
+    cursor: crosshair;
+  }
+  
+  /* X6 Graph overrides */
+  .canvas-container :global(.x6-graph-scroller) {
+    background: var(--color-canvas) !important;
+  }
+  
+  .canvas-container :global(.x6-graph-scroller-content) {
+    cursor: inherit !important;
+  }
+  
+  /* Selection styling */
+  .canvas-container :global(.x6-widget-selection-box) {
+    border: 1px solid var(--color-selection) !important;
+    background: var(--color-selection-fill) !important;
+  }
+  
+  .canvas-container :global(.x6-widget-selection-inner) {
+    border: 1px solid var(--color-selection) !important;
+  }
+  
+  /* Transform handles */
+  .canvas-container :global(.x6-widget-transform) {
+    --x6-widget-transform-active-color: var(--color-accent);
+  }
+  
+  .canvas-container :global(.x6-widget-transform-resize-handle) {
+    width: 8px !important;
+    height: 8px !important;
+    border-radius: 2px !important;
+    background: var(--color-bg-primary) !important;
+    border: 1px solid var(--color-accent) !important;
+  }
+  
+  .canvas-container :global(.x6-widget-transform-rotate-handle) {
+    background: var(--color-accent) !important;
+  }
+  
+  /* Snapline styling */
+  .canvas-container :global(.x6-widget-snapline-horizontal),
+  .canvas-container :global(.x6-widget-snapline-vertical) {
+    stroke: var(--color-accent) !important;
+    stroke-width: 1px !important;
+  }
+  
+  /* Edge styling during connection */
+  .canvas-container :global(.x6-connecting-line) {
+    stroke: var(--color-accent) !important;
+    stroke-dasharray: 5, 5 !important;
+  }
+  
+  /* Port highlighting */
+  .canvas-container :global(.x6-port-body) {
+    transition: all 0.15s ease;
+  }
+  
+  .canvas-container :global(.x6-port-body.x6-port-body-highlight) {
+    fill: var(--color-accent) !important;
+    stroke: var(--color-accent) !important;
+  }
+  
+  /* Rubberband selection */
+  .canvas-container :global(.x6-widget-selection-rubberband) {
+    border: 1px solid var(--color-accent) !important;
+    background: rgba(13, 153, 255, 0.1) !important;
+  }
