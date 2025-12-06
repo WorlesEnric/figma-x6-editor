@@ -16,10 +16,10 @@ export function Toolbar() {
     redo,
     showGrid,
     showSnaplines,
-    showMinimap,
     toggleGrid,
     toggleSnaplines,
-    toggleMinimap,
+    theme,
+    toggleTheme,
   } = useEditorStore();
 
   const handleToolChange = (newTool: ToolType) => {
@@ -33,9 +33,9 @@ export function Toolbar() {
         <div className={styles.logo}>
           <Icon name="layout" size={20} />
         </div>
-        
+
         <div className={styles.divider} />
-        
+
         <div className={styles.toolGroup}>
           <IconButton
             icon="undo"
@@ -62,7 +62,7 @@ export function Toolbar() {
             onClick={() => handleToolChange('select')}
             tooltip="Select (V)"
           />
-          
+
           {/* Hand Tool */}
           <IconButton
             icon="hand"
@@ -77,7 +77,7 @@ export function Toolbar() {
         {/* Shape Tools */}
         <div className={styles.toolGroup}>
           <ShapeDropdown />
-          
+
           {/* Text Tool */}
           <IconButton
             icon="text"
@@ -85,7 +85,7 @@ export function Toolbar() {
             onClick={() => handleToolChange('text')}
             tooltip="Text (T)"
           />
-          
+
           {/* Frame Tool */}
           <IconButton
             icon="frame"
@@ -118,6 +118,12 @@ export function Toolbar() {
       <div className={styles.section}>
         <div className={styles.toolGroup}>
           <IconButton
+            icon={theme === 'light' ? 'Sun' : 'Moon'}
+            active={false}
+            onClick={toggleTheme}
+            tooltip={theme === 'light' ? '切换到深色' : '切换到明亮'}
+          />
+          <IconButton
             icon="grid"
             active={showGrid}
             onClick={toggleGrid}
@@ -129,12 +135,7 @@ export function Toolbar() {
             onClick={toggleSnaplines}
             tooltip="Toggle Snaplines"
           />
-          <IconButton
-            icon="minimap"
-            active={showMinimap}
-            onClick={toggleMinimap}
-            tooltip="Toggle Minimap"
-          />
+
         </div>
 
         <div className={styles.divider} />

@@ -6,6 +6,11 @@ interface EditorStore extends EditorState {
   // Graph instance
   graph: Graph | null;
   setGraph: (graph: Graph | null) => void;
+ 
+  // Theme
+  theme: 'dark' | 'light';
+  setTheme: (theme: 'dark' | 'light') => void;
+  toggleTheme: () => void;
   
   // Tool management
   setTool: (tool: ToolType) => void;
@@ -46,10 +51,23 @@ export const useEditorStore = create<EditorStore>((set, get) => ({
   isPanning: false,
   canUndo: false,
   canRedo: false,
+  theme: (typeof window !== 'undefined' && (localStorage.getItem('editor-theme') as 'dark' | 'light')) || 'dark',
   
   // Graph
   setGraph: (graph) => set({ graph }),
-  
+
+  // Theme
+  setTheme: (theme) => {
+    set({ theme });
+    if (typeof window !== 'undefined') {
+      localStorage.setItem('editor-theme', theme);
+    }
+  },
+  toggleTheme: () => {
+    const next = get().theme === 'dark' ? 'light' : 'dark';
+    get().setTheme(next);
+  },
+
   // Tool
   setTool: (tool) => {
     const { graph, isPanning } = get();

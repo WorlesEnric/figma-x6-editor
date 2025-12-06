@@ -2,33 +2,35 @@ import type { Graph } from '@antv/x6';
 
 export const graphConfig: Partial<Graph.Options> = {
   // Background
+  // Background
   background: {
-    color: '#1a1a1a',
+    color: 'transparent', // Use transparent to let container background show through, or synced via themeUtils
   },
-  
+
   // Grid
   grid: {
     visible: true,
+    size: 10,
     type: 'doubleMesh',
     args: [
       {
-        color: '#2a2a2a',
+        color: '#444444', // Primary grid lines - distinct grey
         thickness: 1,
       },
       {
-        color: '#333333',
+        color: '#666666', // Secondary grid lines - brighter grey
         thickness: 1,
-        factor: 4,
+        factor: 10, // Every 10th line is darker (Draw.io style)
       },
     ],
   },
-  
+
   // Panning
   panning: {
     enabled: true,
     modifiers: ['space'],
   },
-  
+
   // Mouse wheel zoom
   mousewheel: {
     enabled: true,
@@ -37,7 +39,7 @@ export const graphConfig: Partial<Graph.Options> = {
     maxScale: 5,
     minScale: 0.1,
   },
-  
+
   // Connecting edges
   connecting: {
     router: 'manhattan',
@@ -81,7 +83,7 @@ export const graphConfig: Partial<Graph.Options> = {
       return true;
     },
   },
-  
+
   // Highlighting
   highlighting: {
     magnetAdsorbed: {
@@ -103,7 +105,7 @@ export const graphConfig: Partial<Graph.Options> = {
       },
     },
   },
-  
+
   // Resizing
   resizing: {
     enabled: true,
@@ -114,13 +116,13 @@ export const graphConfig: Partial<Graph.Options> = {
     autoScroll: true,
     preserveAspectRatio: false,
   },
-  
+
   // Rotating
   rotating: {
     enabled: true,
     grid: 15,
   },
-  
+
   // Selecting
   selecting: {
     enabled: true,
@@ -133,7 +135,7 @@ export const graphConfig: Partial<Graph.Options> = {
     modifiers: ['shift'],
     filter: ['groupNode'],
   },
-  
+
   // Embedding (grouping)
   embedding: {
     enabled: true,
@@ -149,7 +151,7 @@ export const graphConfig: Partial<Graph.Options> = {
       });
     },
   },
-  
+
   // Interacting
   interacting: {
     nodeMovable: true,

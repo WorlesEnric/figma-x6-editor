@@ -1,4 +1,4 @@
-import { useEffect, useRef, useCallback } from 'react';
+import { useEffect, useRef, useCallback, useState } from 'react';
 import { Graph } from '@antv/x6';
 import { Selection } from '@antv/x6-plugin-selection';
 import { Snapline } from '@antv/x6-plugin-snapline';
@@ -6,31 +6,33 @@ import { History } from '@antv/x6-plugin-history';
 import { Clipboard } from '@antv/x6-plugin-clipboard';
 import { Keyboard } from '@antv/x6-plugin-keyboard';
 import { Transform } from '@antv/x6-plugin-transform';
-import { Scroller } from '@antv/x6-plugin-scroller';
 import { useEditorStore, useSelectionStore, usePageStore } from '@/store';
 import { graphConfig } from '@/config/graphConfig';
 import { toolShortcuts } from '@/config/shortcuts';
 import { importGraphData, exportGraphData } from '@/utils/graphUtils';
 import './Canvas.css';
+import { redrawGridForTheme, ensureGridVisible } from '@/utils/themeUtils';
 
 export function Canvas() {
   const containerRef = useRef<HTMLDivElement>(null);
   const graphRef = useRef<Graph | null>(null);
-  
-  const { 
-    setGraph, 
-    tool, 
+  const [textEdit, setTextEdit] = useState<{ nodeId: string; value: string; x: number; y: number; width: number; height: number; fontSize: number; fontFamily: string; color: string } | null>(null);
+
+  const {
+    setGraph,
+    tool,
     setTool,
     zoom,
     setZoom,
-    showGrid, 
+    showGrid,
     showSnaplines,
     setHistoryState,
+    theme,
   } = useEditorStore();
-  
+
   const { setSelection, clearSelection } = useSelectionStore();
   const { currentPage, currentPageId, updatePageData } = usePageStore();
-  
+
   // Save current page data
   const saveCurrentPageData = useCallback(() => {
     if (graphRef.current && currentPageId) {
@@ -45,7 +47,7 @@ export function Canvas() {
 
     const graph = new Graph({
       container: containerRef.current,
-      autoResize: true,
+      autoResize: false,
       ...graphConfig,
     });
 
@@ -106,23 +108,50 @@ export function Canvas() {
       })
     );
 
-    graph.use(
-      new Scroller({
-        enabled: true,
-        pannable: true,
-        pageVisible: false,
-        pageBreak: false,
-      })
-    );
+    // Scroller disabled for true infinite canvas (Draw.io style)
+    // The built-in panning (enabled in graphConfig) provides infinite canvas behavior
+    // graph.use(
+    //   new Scroller({
+    //     enabled: true,
+    //     pannable: true,
+    //     pageVisible: false,
+    //     pageBreak: false,
+    //     padding: 2000,
+    //   })
+    // );
 
     // Store graph reference
     graphRef.current = graph;
     setGraph(graph);
 
     // Initial grid state
-    if (!showGrid) {
+    if (showGrid) {
+      ensureGridVisible(graph);
+    } else {
       graph.hideGrid();
     }
+
+    graph.centerContent();
+    graph.zoomTo(1);
+
+    // Initial Resize handling
+    const resizeObserver = new ResizeObserver(() => {
+      if (!containerRef.current || !graphRef.current) return;
+      const width = containerRef.current.clientWidth;
+      const height = containerRef.current.clientHeight;
+
+      // Resize graph directly (no scroller)
+      graphRef.current.resize(width, height);
+
+      // Redraw grid to ensure it covers new area
+      // @ts-ignore
+      if (typeof graphRef.current.drawGrid === 'function') {
+        // @ts-ignore
+        graphRef.current.drawGrid();
+      }
+    });
+
+    resizeObserver.observe(containerRef.current);
 
     // Event listeners
     graph.on('selection:changed', ({ selected }) => {
@@ -155,6 +184,37 @@ export function Canvas() {
         node.portProp(port.id!, 'attrs/circle/style/visibility', 'hidden');
       });
     });
+
+    // Double-click to edit text
+    graph.on('node:dblclick', ({ node }) => {
+      const attrs = node.getAttrs();
+      const label = attrs?.label as Record<string, unknown> | undefined;
+
+      if (label) {
+        const bbox = node.getBBox();
+        const zoom = graph.zoom();
+        const translate = graph.translate();
+
+        // Calculate position in screen coordinates
+        const x = bbox.x * zoom + translate.tx;
+        const y = bbox.y * zoom + translate.ty;
+        const width = bbox.width * zoom;
+        const height = bbox.height * zoom;
+
+        setTextEdit({
+          nodeId: node.id,
+          value: (label.text as string) || '',
+          x,
+          y,
+          width,
+          height,
+          fontSize: ((label.fontSize as number) || 14) * zoom,
+          fontFamily: (label.fontFamily as string) || 'DM Sans, sans-serif',
+          color: (label.fill as string) || '#333333',
+        });
+      }
+    });
+
 
     // Register keyboard shortcuts
     // Tool shortcuts
@@ -230,7 +290,7 @@ export function Canvas() {
             cell.setPosition(pos.x + 20, pos.y + 20);
           }
         });
-        graph.addCells(cloneArray);
+        graph.addCell(cloneArray);
         graph.cleanSelection();
         graph.select(cloneArray);
       }
@@ -281,7 +341,7 @@ export function Canvas() {
     if (!graphRef.current || !currentPage) return;
 
     const graph = graphRef.current;
-    
+
     // Clear current graph
     graph.clearCells();
 
@@ -317,18 +377,32 @@ export function Canvas() {
   // Handle grid visibility
   useEffect(() => {
     if (!graphRef.current) return;
-    
+
     if (showGrid) {
-      graphRef.current.showGrid();
+      ensureGridVisible(graphRef.current);
     } else {
       graphRef.current.hideGrid();
     }
   }, [showGrid]);
 
+  // Handle theme change
+  useEffect(() => {
+    if (!graphRef.current || !showGrid) return;
+
+    // Delay to ensure DOM update for CSS variables
+    const timer = setTimeout(() => {
+      if (graphRef.current) {
+        ensureGridVisible(graphRef.current);
+      }
+    }, 50);
+
+    return () => clearTimeout(timer);
+  }, [theme, showGrid]);
+
   // Handle snapline visibility
   useEffect(() => {
     if (!graphRef.current) return;
-    
+
     if (showSnaplines) {
       graphRef.current.enableSnapline();
     } else {
@@ -339,7 +413,7 @@ export function Canvas() {
   // Handle zoom changes from store
   useEffect(() => {
     if (!graphRef.current) return;
-    
+
     const currentZoom = Math.round(graphRef.current.zoom() * 100);
     if (currentZoom !== zoom) {
       graphRef.current.zoomTo(zoom / 100);
@@ -349,16 +423,16 @@ export function Canvas() {
   // Handle drawing new shapes
   const handleCanvasClick = useCallback((e: React.MouseEvent) => {
     if (!graphRef.current) return;
-    
+
     const graph = graphRef.current;
-    
+
     // Only create shapes in drawing mode
     if (!['rectangle', 'ellipse', 'diamond', 'triangle', 'text', 'frame'].includes(tool)) {
       return;
     }
 
     const point = graph.clientToLocal(e.clientX, e.clientY);
-    
+
     const shapeMap: Record<string, { shape: string; width: number; height: number }> = {
       rectangle: { shape: 'custom-rect', width: 100, height: 60 },
       ellipse: { shape: 'custom-ellipse', width: 80, height: 80 },
@@ -381,18 +455,66 @@ export function Canvas() {
 
     graph.cleanSelection();
     graph.select(node);
-    
+
     // Switch back to select tool
     setTool('select');
   }, [tool, setTool]);
 
+  const commitTextEdit = useCallback(() => {
+    if (!graphRef.current || !textEdit) return;
+    const node = graphRef.current.getCellById(textEdit.nodeId);
+    if (node && node.isNode()) {
+      node.attr('label/text', textEdit.value);
+    }
+    setTextEdit(null);
+  }, [textEdit]);
+
   return (
-    <div 
-      ref={containerRef} 
+    <div
+      ref={containerRef}
       className="canvas-container"
       data-tool={tool}
       onClick={handleCanvasClick}
-    />
+    >
+      {textEdit && (
+        <textarea
+          style={{
+            position: 'absolute',
+            left: textEdit.x,
+            top: textEdit.y,
+            width: textEdit.width,
+            height: textEdit.height,
+            resize: 'none',
+            outline: 'none',
+            border: '2px solid var(--color-accent)',
+            background: 'rgba(255, 255, 255, 0.95)',
+            color: textEdit.color,
+            fontSize: textEdit.fontSize,
+            fontFamily: textEdit.fontFamily,
+            lineHeight: 1.4,
+            textAlign: 'center',
+            padding: '8px',
+            boxSizing: 'border-box',
+            borderRadius: '4px',
+            boxShadow: '0 2px 8px rgba(0, 0, 0, 0.15)',
+            zIndex: 1000,
+          }}
+          value={textEdit.value}
+          onChange={(e) => setTextEdit({ ...textEdit, value: e.target.value })}
+          onBlur={commitTextEdit}
+          onKeyDown={(e) => {
+            if (e.key === 'Enter' && (e.ctrlKey || e.metaKey)) {
+              e.preventDefault();
+              commitTextEdit();
+            } else if (e.key === 'Escape') {
+              e.preventDefault();
+              setTextEdit(null);
+            }
+          }}
+          autoFocus
+        />
+      )}
+    </div>
   );
 }
 

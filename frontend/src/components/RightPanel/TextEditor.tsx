@@ -18,9 +18,9 @@ const fontFamilies = [
 export function TextEditor() {
   const { graph } = useEditorStore();
   const { selectedNodes } = useSelectionStore();
-  
+
   const [showColorPicker, setShowColorPicker] = useState(false);
-  
+
   // Text properties state
   const [fontFamily, setFontFamily] = useState('DM Sans, sans-serif');
   const [fontSize, setFontSize] = useState(14);
@@ -28,22 +28,24 @@ export function TextEditor() {
   const [fontStyle, setFontStyle] = useState<'normal' | 'italic'>('normal');
   const [textAlign, setTextAlign] = useState<'left' | 'center' | 'right'>('center');
   const [textColor, setTextColor] = useState('#333333');
+  const [textContent, setTextContent] = useState('');
 
   // Get current text properties from selected node
   useEffect(() => {
     if (selectedNodes.length === 1) {
       const node = selectedNodes[0];
       const attrs = node.getAttrs();
-      
+
       if (attrs?.label) {
         const label = attrs.label as Record<string, unknown>;
         setFontFamily((label.fontFamily as string) || 'DM Sans, sans-serif');
         setFontSize((label.fontSize as number) || 14);
         setFontWeight((label.fontWeight as number) || 400);
         setFontStyle((label.fontStyle as 'normal' | 'italic') || 'normal');
-        setTextAlign((label.textAnchor as string) === 'start' ? 'left' : 
-                    (label.textAnchor as string) === 'end' ? 'right' : 'center');
+        setTextAlign((label.textAnchor as string) === 'start' ? 'left' :
+          (label.textAnchor as string) === 'end' ? 'right' : 'center');
         setTextColor((label.fill as string) || '#333333');
+        setTextContent((label.text as string) || '');
       }
     }
   }, [selectedNodes]);
@@ -60,7 +62,7 @@ export function TextEditor() {
 
   const applyTextStyle = (updates: Record<string, unknown>) => {
     if (!graph) return;
-    
+
     selectedNodes.forEach(node => {
       Object.entries(updates).forEach(([key, value]) => {
         node.attr(`label/${key}`, value);
@@ -105,8 +107,38 @@ export function TextEditor() {
     applyTextStyle({ fill: color });
   };
 
+  const handleTextContentChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
+    const value = e.target.value;
+    setTextContent(value);
+    applyTextStyle({ text: value });
+  };
+
   return (
     <div>
+      {/* Text Content */}
+      <div className={styles.propertyRow}>
+        <span className={styles.propertyLabel}>Text</span>
+        <textarea
+          className={styles.textArea}
+          value={textContent}
+          onChange={handleTextContentChange}
+          placeholder="Enter text..."
+          rows={3}
+          style={{
+            width: '100%',
+            padding: 'var(--spacing-sm)',
+            fontSize: 'var(--font-size-md)',
+            fontFamily: 'var(--font-family)',
+            border: '1px solid var(--color-border)',
+            borderRadius: 'var(--radius-sm)',
+            background: 'var(--color-bg-secondary)',
+            color: 'var(--color-text-primary)',
+            resize: 'vertical',
+            marginTop: 'var(--spacing-xs)',
+          }}
+        />
+      </div>
+
       {/* Font Family */}
       <div className={styles.propertyRow}>
         <select
@@ -185,14 +217,14 @@ export function TextEditor() {
       {/* Text Color */}
       <div className={styles.colorRow} style={{ marginTop: 'var(--spacing-sm)' }}>
         <span className={styles.propertyLabel}>Color</span>
-        <div 
+        <div
           className={styles.colorPreview}
           onClick={() => setShowColorPicker(!showColorPicker)}
           style={{ position: 'relative' }}
         >
-          <div 
-            className={styles.colorSwatch} 
-            style={{ backgroundColor: textColor }} 
+          <div
+            className={styles.colorSwatch}
+            style={{ backgroundColor: textColor }}
           />
           {showColorPicker && (
             <div className={styles.colorPickerPopover}>

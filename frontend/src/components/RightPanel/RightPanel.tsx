@@ -2,6 +2,8 @@ import { useSelectionStore } from '@/store';
 import { PropertyEditor } from './PropertyEditor';
 import { FillStrokeEditor } from './FillStrokeEditor';
 import { AlignmentTools } from './AlignmentTools';
+import { TextEditor } from './TextEditor';
+import { EdgeEditor } from './EdgeEditor';
 import styles from './RightPanel.module.css';
 
 export function RightPanel() {
@@ -16,14 +18,19 @@ export function RightPanel() {
             <div className={styles.sectionHeader}>Transform</div>
             <PropertyEditor />
           </div>
-          
+
           {selectedNodes.length > 0 && (
             <>
               <div className={styles.section}>
                 <div className={styles.sectionHeader}>Fill & Stroke</div>
                 <FillStrokeEditor />
               </div>
-              
+
+              <div className={styles.section}>
+                <div className={styles.sectionHeader}>Text</div>
+                <TextEditor />
+              </div>
+
               {selectedNodes.length > 1 && (
                 <div className={styles.section}>
                   <div className={styles.sectionHeader}>Alignment</div>
@@ -31,6 +38,13 @@ export function RightPanel() {
                 </div>
               )}
             </>
+          )}
+
+          {selectedEdges.length > 0 && (
+            <div className={styles.section}>
+              <div className={styles.sectionHeader}>Edge Style</div>
+              <EdgeEditor />
+            </div>
           )}
         </>
       ) : (

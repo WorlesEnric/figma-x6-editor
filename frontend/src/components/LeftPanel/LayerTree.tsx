@@ -82,10 +82,10 @@ export function LayerTree() {
   const cellToLayerData = (cell: Cell): LayerData => {
     const isNode = cell.isNode();
     const shape = cell.shape;
-    const label = isNode 
+    const label = isNode
       ? (cell as Node).getAttrByPath('label/text') as string
       : undefined;
-    
+
     return {
       id: cell.id,
       name: label || getShapeName(shape),
@@ -115,6 +115,17 @@ export function LayerTree() {
       'flowchart-data': 'Data',
       'flowchart-document': 'Document',
       'flowchart-database': 'Database',
+      'network-cloud': 'Cloud',
+      'network-server': 'Server',
+      'network-database': 'Database',
+      'network-router': 'Router',
+      'network-firewall': 'Firewall',
+      'network-pc': 'PC',
+      'network-phone': 'Phone',
+      'uml-class': 'Class',
+      'uml-interface': 'Interface',
+      'uml-actor': 'Actor',
+      'uml-usecase': 'Use Case',
       edge: 'Connector',
     };
     return names[shape] || shape;
@@ -131,6 +142,17 @@ export function LayerTree() {
       'custom-frame': 'frame',
       'custom-line': 'line',
       'custom-arrow': 'arrow',
+      'network-cloud': 'cloud',
+      'network-server': 'server',
+      'network-database': 'database',
+      'network-router': 'router',
+      'network-firewall': 'shield',
+      'network-pc': 'monitor',
+      'network-phone': 'smartphone',
+      'uml-class': 'layout',
+      'uml-interface': 'circle',
+      'uml-actor': 'user',
+      'uml-usecase': 'circle',
       edge: 'arrow',
     };
     return icons[type] || 'square';

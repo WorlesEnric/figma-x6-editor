@@ -1,14 +1,14 @@
 import type { Graph, Node, Edge, Cell } from '@antv/x6';
 
 // Tool Types
-export type ToolType = 
-  | 'select' 
-  | 'hand' 
-  | 'rectangle' 
-  | 'ellipse' 
+export type ToolType =
+  | 'select'
+  | 'hand'
+  | 'rectangle'
+  | 'ellipse'
   | 'diamond'
   | 'triangle'
-  | 'line' 
+  | 'line'
   | 'arrow'
   | 'text'
   | 'image'
@@ -131,22 +131,7 @@ export interface SelectionBounds {
   height: number;
 }
 
-// Shape Definition Types
-export interface ShapeDefinition {
-  name: string;
-  icon: string;
-  shape: string;
-  defaultWidth: number;
-  defaultHeight: number;
-  category: 'basic' | 'flowchart' | 'arrows' | 'custom';
-  preview?: string;
-}
 
-export interface ShapeCategory {
-  id: string;
-  name: string;
-  shapes: ShapeDefinition[];
-}
 
 // History Types
 export interface HistoryState {

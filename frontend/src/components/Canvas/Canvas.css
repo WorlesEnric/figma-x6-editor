@@ -36,30 +36,44 @@
   }
   
   /* X6 Graph overrides */
-  .canvas-container :global(.x6-graph-scroller) {
-    background: var(--color-canvas) !important;
+  .canvas-container .x6-graph {
+    width: 100% !important;
+    height: 100% !important;
+  }
+  .canvas-container .x6-graph-svg {
+    width: 100% !important;
+    height: 100% !important;
+  }
+  .canvas-container .x6-graph-scroller {
+    width: 100% !important;
+    height: 100% !important;
+    position: absolute !important;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
   }
   
-  .canvas-container :global(.x6-graph-scroller-content) {
+  .canvas-container .x6-graph-scroller-content {
     cursor: inherit !important;
   }
   
   /* Selection styling */
-  .canvas-container :global(.x6-widget-selection-box) {
+  .canvas-container .x6-widget-selection-box {
     border: 1px solid var(--color-selection) !important;
     background: var(--color-selection-fill) !important;
   }
   
-  .canvas-container :global(.x6-widget-selection-inner) {
+  .canvas-container .x6-widget-selection-inner {
     border: 1px solid var(--color-selection) !important;
   }
   
   /* Transform handles */
-  .canvas-container :global(.x6-widget-transform) {
+  .canvas-container .x6-widget-transform {
     --x6-widget-transform-active-color: var(--color-accent);
   }
   
-  .canvas-container :global(.x6-widget-transform-resize-handle) {
+  .canvas-container .x6-widget-transform-resize-handle {
     width: 8px !important;
     height: 8px !important;
     border-radius: 2px !important;
@@ -67,35 +81,35 @@
     border: 1px solid var(--color-accent) !important;
   }
   
-  .canvas-container :global(.x6-widget-transform-rotate-handle) {
+  .canvas-container .x6-widget-transform-rotate-handle {
     background: var(--color-accent) !important;
   }
   
   /* Snapline styling */
-  .canvas-container :global(.x6-widget-snapline-horizontal),
-  .canvas-container :global(.x6-widget-snapline-vertical) {
+  .canvas-container .x6-widget-snapline-horizontal,
+  .canvas-container .x6-widget-snapline-vertical {
     stroke: var(--color-accent) !important;
     stroke-width: 1px !important;
   }
   
   /* Edge styling during connection */
-  .canvas-container :global(.x6-connecting-line) {
+  .canvas-container .x6-connecting-line {
     stroke: var(--color-accent) !important;
     stroke-dasharray: 5, 5 !important;
   }
   
   /* Port highlighting */
-  .canvas-container :global(.x6-port-body) {
+  .canvas-container .x6-port-body {
     transition: all 0.15s ease;
   }
   
-  .canvas-container :global(.x6-port-body.x6-port-body-highlight) {
+  .canvas-container .x6-port-body.x6-port-body-highlight {
     fill: var(--color-accent) !important;
     stroke: var(--color-accent) !important;
   }
   
   /* Rubberband selection */
-  .canvas-container :global(.x6-widget-selection-rubberband) {
+  .canvas-container .x6-widget-selection-rubberband {
     border: 1px solid var(--color-accent) !important;
     background: rgba(13, 153, 255, 0.1) !important;
   }

@@ -3,22 +3,29 @@ import { Canvas } from '../Canvas';
 import { Toolbar } from '../Toolbar/Toolbar';
 import { LeftPanel } from '../LeftPanel/LeftPanel';
 import { RightPanel } from '../RightPanel/RightPanel';
-import { Minimap } from '../Minimap/Minimap';
 import { useEditorStore, usePageStore } from '@/store';
 import { registerAllShapes } from '@/shapes';
 import styles from './App.module.css';
+import { applyThemeClass, redrawGridForTheme } from '@/utils/themeUtils';
 
 // Register all shapes on app load
 registerAllShapes();
 
 export function App() {
-  const { showMinimap, graph } = useEditorStore();
+  const { graph, theme } = useEditorStore();
   const { initialize } = usePageStore();
 
   useEffect(() => {
     // Initialize with a default page
     initialize();
   }, [initialize]);
+
+  useEffect(() => {
+    applyThemeClass(theme);
+    if (graph) {
+      redrawGridForTheme(graph);
+    }
+  }, [theme, graph]);
 
   return (
     <div className={styles.app}>
@@ -27,7 +34,6 @@ export function App() {
         <LeftPanel />
         <div className={styles.canvasArea}>
           <Canvas />
-          {showMinimap && graph && <Minimap />}
         </div>
         <RightPanel />
       </div>
