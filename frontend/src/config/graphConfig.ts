@@ -154,13 +154,34 @@ export const graphConfig: Partial<Graph.Options> = {
 
   // Interacting
   interacting: {
-    nodeMovable: true,
-    edgeMovable: true,
-    edgeLabelMovable: true,
-    arrowheadMovable: true,
-    vertexMovable: true,
-    vertexAddable: true,
-    vertexDeletable: true,
+    nodeMovable: (view) => {
+      const d = view.cell.getData<any>();
+      return !d?.locked;
+    },
+    edgeMovable: (view) => {
+      const d = view.cell.getData<any>();
+      return !d?.locked;
+    },
+    edgeLabelMovable: (view) => {
+      const d = view.cell.getData<any>();
+      return !d?.locked;
+    },
+    arrowheadMovable: (view) => {
+      const d = view.cell.getData<any>();
+      return !d?.locked;
+    },
+    vertexMovable: (view) => {
+      const d = view.cell.getData<any>();
+      return !d?.locked;
+    },
+    vertexAddable: (view) => {
+      const d = view.cell.getData<any>();
+      return !d?.locked;
+    },
+    vertexDeletable: (view) => {
+      const d = view.cell.getData<any>();
+      return !d?.locked;
+    },
   },
 };
 

@@ -22,8 +22,10 @@
     "@antv/x6-plugin-stencil": "^2.1.5",
     "@antv/x6-plugin-transform": "^2.1.8",
     "@antv/x6-react-shape": "^2.2.3",
+    "@types/react-color": "^3.0.13",
     "lucide-react": "^0.300.0",
     "react": "^18.2.0",
+    "react-color": "^2.19.3",
     "react-dom": "^18.2.0",
     "uuid": "^9.0.0",
     "zustand": "^4.5.0"

@@ -1,5 +1,5 @@
 import { useEffect, useRef, useCallback, useState } from 'react';
-import { Graph } from '@antv/x6';
+import { Graph, Cell } from '@antv/x6';
 import { Selection } from '@antv/x6-plugin-selection';
 import { Snapline } from '@antv/x6-plugin-snapline';
 import { History } from '@antv/x6-plugin-history';
@@ -10,6 +10,7 @@ import { useEditorStore, useSelectionStore, usePageStore } from '@/store';
 import { graphConfig } from '@/config/graphConfig';
 import { toolShortcuts } from '@/config/shortcuts';
 import { importGraphData, exportGraphData } from '@/utils/graphUtils';
+import { CanvasContextMenu } from './CanvasContextMenu';
 import './Canvas.css';
 import { redrawGridForTheme, ensureGridVisible } from '@/utils/themeUtils';
 
@@ -17,6 +18,7 @@ export function Canvas() {
   const containerRef = useRef<HTMLDivElement>(null);
   const graphRef = useRef<Graph | null>(null);
   const [textEdit, setTextEdit] = useState<{ nodeId: string; value: string; x: number; y: number; width: number; height: number; fontSize: number; fontFamily: string; color: string } | null>(null);
+  const [contextMenu, setContextMenu] = useState<{ visible: boolean; x: number; y: number; cell: Cell | null }>({ visible: false, x: 0, y: 0, cell: null });
 
   const {
     setGraph,
@@ -94,7 +96,10 @@ export function Canvas() {
     graph.use(
       new Transform({
         resizing: {
-          enabled: true,
+          enabled: (node) => {
+            const d = node.getData<any>();
+            return !d?.locked;
+          },
           minWidth: 20,
           minHeight: 20,
           orthogonal: true,
@@ -102,7 +107,10 @@ export function Canvas() {
           preserveAspectRatio: false,
         },
         rotating: {
-          enabled: true,
+          enabled: (node) => {
+            const d = node.getData<any>();
+            return !d?.locked;
+          },
           grid: 15,
         },
       })
@@ -215,6 +223,17 @@ export function Canvas() {
       }
     });
 
+
+    // Right-click context menu for cells
+    graph.on('cell:contextmenu', ({ cell, e }) => {
+      e.preventDefault();
+      setContextMenu({
+        visible: true,
+        x: e.clientX,
+        y: e.clientY,
+        cell,
+      });
+    });
 
     // Register keyboard shortcuts
     // Tool shortcuts
@@ -469,6 +488,88 @@ export function Canvas() {
     setTextEdit(null);
   }, [textEdit]);
 
+  // Context menu handlers
+  const handleContextMenuClose = () => {
+    setContextMenu({ visible: false, x: 0, y: 0, cell: null });
+  };
+
+  const handleDelete = () => {
+    if (!graphRef.current || !contextMenu.cell) return;
+    graphRef.current.removeCell(contextMenu.cell);
+  };
+
+  const handleCut = () => {
+    if (!graphRef.current || !contextMenu.cell) return;
+    graphRef.current.copy([contextMenu.cell]);
+    graphRef.current.removeCell(contextMenu.cell);
+  };
+
+  const handleCopy = () => {
+    if (!graphRef.current || !contextMenu.cell) return;
+    graphRef.current.copy([contextMenu.cell]);
+  };
+
+  const handleDuplicate = () => {
+    if (!graphRef.current || !contextMenu.cell) return;
+    const clones = graphRef.current.cloneCells([contextMenu.cell]);
+    const cloneArray = Object.values(clones);
+    cloneArray.forEach((cell) => {
+      if (cell.isNode()) {
+        const pos = cell.getPosition();
+        cell.setPosition(pos.x + 20, pos.y + 20);
+      }
+    });
+    graphRef.current.addCell(cloneArray);
+  };
+
+  const handleLock = () => {
+    if (!contextMenu.cell) return;
+    const cell = contextMenu.cell;
+    const data = cell.getData<any>() || {};
+    const next = !data.locked;
+    cell.setData({ ...data, locked: next });
+  };
+
+  const handleBringToFront = () => {
+    if (!contextMenu.cell) return;
+    contextMenu.cell.toFront();
+  };
+
+  const handleSendToBack = () => {
+    if (!contextMenu.cell) return;
+    contextMenu.cell.toBack();
+  };
+
+  const handleBringForward = () => {
+    if (!graphRef.current || !contextMenu.cell) return;
+    const cells = graphRef.current.getCells();
+    const currentZ = contextMenu.cell.getZIndex() || 0;
+
+    const higherCells = cells
+      .filter(c => (c.getZIndex() || 0) > currentZ)
+      .sort((a, b) => (a.getZIndex() || 0) - (b.getZIndex() || 0));
+
+    if (higherCells.length > 0) {
+      const targetZ = higherCells[0].getZIndex() || 0;
+      contextMenu.cell.setZIndex(targetZ + 1);
+    }
+  };
+
+  const handleSendBackward = () => {
+    if (!graphRef.current || !contextMenu.cell) return;
+    const cells = graphRef.current.getCells();
+    const currentZ = contextMenu.cell.getZIndex() || 0;
+
+    const lowerCells = cells
+      .filter(c => (c.getZIndex() || 0) < currentZ)
+      .sort((a, b) => (b.getZIndex() || 0) - (a.getZIndex() || 0));
+
+    if (lowerCells.length > 0) {
+      const targetZ = lowerCells[0].getZIndex() || 0;
+      contextMenu.cell.setZIndex(targetZ - 1);
+    }
+  };
+
   return (
     <div
       ref={containerRef}
@@ -514,6 +615,23 @@ export function Canvas() {
           autoFocus
         />
       )}
+
+      <CanvasContextMenu
+        visible={contextMenu.visible}
+        x={contextMenu.x}
+        y={contextMenu.y}
+        cell={contextMenu.cell}
+        onClose={handleContextMenuClose}
+        onDelete={handleDelete}
+        onCut={handleCut}
+        onCopy={handleCopy}
+        onDuplicate={handleDuplicate}
+        onLock={handleLock}
+        onBringToFront={handleBringToFront}
+        onSendToBack={handleSendToBack}
+        onBringForward={handleBringForward}
+        onSendBackward={handleSendBackward}
+      />
     </div>
   );
 }

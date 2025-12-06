@@ -22,7 +22,7 @@ const iconMap: Record<string, IconName> = {
   text: 'Type',
   image: 'Image',
   frame: 'Frame',
-  
+
   // Actions
   undo: 'Undo2',
   redo: 'Redo2',
@@ -33,7 +33,7 @@ const iconMap: Record<string, IconName> = {
   duplicate: 'CopyPlus',
   group: 'Group',
   ungroup: 'Ungroup',
-  
+
   // View
   'zoom-in': 'ZoomIn',
   'zoom-out': 'ZoomOut',
@@ -41,7 +41,7 @@ const iconMap: Record<string, IconName> = {
   grid: 'Grid3x3',
   minimap: 'Map',
   snapline: 'Magnet',
-  
+
   // Alignment
   'align-left': 'AlignLeft',
   'align-center': 'AlignCenter',
@@ -51,18 +51,22 @@ const iconMap: Record<string, IconName> = {
   'align-bottom': 'AlignEndVertical',
   'distribute-h': 'AlignHorizontalSpaceAround',
   'distribute-v': 'AlignVerticalSpaceAround',
-  
+
   // Layers
   'bring-front': 'BringToFront',
   'send-back': 'SendToBack',
   'layer-up': 'ArrowUp',
   'layer-down': 'ArrowDown',
-  
+
   // UI
   chevronDown: 'ChevronDown',
   chevronRight: 'ChevronRight',
   chevronLeft: 'ChevronLeft',
   chevronUp: 'ChevronUp',
+  'chevron-down': 'ChevronDown',
+  'chevron-up': 'ChevronUp',
+  'chevrons-down': 'ChevronsDown',
+  'chevrons-up': 'ChevronsUp',
   plus: 'Plus',
   minus: 'Minus',
   close: 'X',
@@ -80,21 +84,21 @@ const iconMap: Record<string, IconName> = {
   unlock: 'Unlock',
   eye: 'Eye',
   'eye-off': 'EyeOff',
-  
+
   // Shapes
   square: 'Square',
   circle: 'Circle',
   hexagon: 'Hexagon',
   star: 'Star',
   heart: 'Heart',
-  
+
   // Flowchart
   database: 'Database',
   'file-text': 'FileText',
   layout: 'Layout',
   edit: 'Edit3',
   monitor: 'Monitor',
-  
+
   // Misc
   info: 'Info',
   warning: 'AlertTriangle',
@@ -105,20 +109,27 @@ const iconMap: Record<string, IconName> = {
   play: 'Play',
   pause: 'Pause',
   refresh: 'RefreshCw',
+  user: 'User',
+  smartphone: 'Smartphone',
+  shield: 'Shield',
+  cloud: 'Cloud',
+  server: 'Server',
+  router: 'Router',
+  Layers: 'Layers',
 };
 
 export function Icon({ name, size = 16, ...props }: IconProps) {
   // Check if it's a mapped name or direct Lucide icon name
   const iconName = iconMap[name] || name;
-  
+
   // Get the icon component
-  const IconComponent = (LucideIcons as Record<string, React.ComponentType<LucideProps>>)[iconName];
-  
+  const IconComponent = (LucideIcons as unknown as Record<string, React.ComponentType<LucideProps>>)[iconName];
+
   if (!IconComponent) {
     console.warn(`Icon "${name}" not found`);
     return null;
   }
-  
+
   return <IconComponent size={size} {...props} />;
 }
 
