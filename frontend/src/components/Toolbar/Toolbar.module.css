@@ -194,3 +194,34 @@
   background: var(--color-bg-hover);
   color: var(--color-text-primary);
 }
+
+/* AI Assistant Button */
+.aiButton {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-sm);
+  padding: var(--spacing-sm) var(--spacing-md);
+  background: linear-gradient(135deg, var(--color-accent) 0%, #0b85e0 100%);
+  border: none;
+  border-radius: var(--radius-md);
+  color: white;
+  font-size: var(--font-size-sm);
+  font-weight: var(--font-weight-medium);
+  cursor: pointer;
+  transition: all 0.2s ease;
+  box-shadow: 0 2px 8px rgba(13, 153, 255, 0.3);
+}
+
+.aiButton:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(13, 153, 255, 0.4);
+}
+
+.aiButton:active {
+  transform: translateY(0);
+}
+
+.aiButtonActive {
+  background: linear-gradient(135deg, #0b85e0 0%, #0967b3 100%);
+  box-shadow: 0 2px 8px rgba(13, 153, 255, 0.5), inset 0 1px 2px rgba(0, 0, 0, 0.1);
+}

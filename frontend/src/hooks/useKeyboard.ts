@@ -1,10 +1,11 @@
 import { useEffect, useCallback } from 'react';
-import { useEditorStore } from '@/store';
+import { useEditorStore, useAIStore } from '@/store';
 import { toolShortcuts } from '@/config/shortcuts';
 import type { ToolType } from '@/types';
 
 export function useKeyboard() {
   const { graph, setTool, tool } = useEditorStore();
+  const { togglePanel } = useAIStore();
 
   // Handle tool shortcuts
   const handleToolShortcut = useCallback(
@@ -50,6 +51,13 @@ export function useKeyboard() {
           // Don't change tool, just enable panning via space
         }
       }
+
+      // Ctrl/Cmd + L: Toggle AI Panel
+      if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'l') {
+        e.preventDefault();
+        togglePanel();
+        return;
+      }
     };
 
     document.addEventListener('keydown', handleKeyDown);
@@ -57,7 +65,7 @@ export function useKeyboard() {
     return () => {
       document.removeEventListener('keydown', handleKeyDown);
     };
-  }, [graph, tool, handleToolShortcut]);
+  }, [graph, tool, handleToolShortcut, togglePanel]);
 
   return {
     handleToolShortcut,

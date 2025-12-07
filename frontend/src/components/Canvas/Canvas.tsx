@@ -439,6 +439,8 @@ export function Canvas() {
     }
   }, [zoom]);
 
+
+
   // Handle drawing new shapes
   const handleCanvasClick = useCallback((e: React.MouseEvent) => {
     if (!graphRef.current) return;

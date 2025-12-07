@@ -1,9 +1,15 @@
+// Load environment variables
+require('dotenv').config();
+
 const express = require('express');
 const cors = require('cors');
 const multer = require('multer');
 const { v4: uuidv4 } = require('uuid');
 const path = require('path');
 const fs = require('fs');
+
+// Import AI routes
+const aiRoutes = require('./routes/ai');
 
 const app = express();
 const PORT = 3001;
@@ -113,11 +119,11 @@ app.patch('/api/projects/:id', (req, res) => {
   if (!project) {
     return res.status(404).json({ error: 'Project not found' });
   }
-  
+
   const updates = req.body;
   Object.assign(project, updates, { updatedAt: Date.now() });
   store.projects.set(project.id, project);
-  
+
   res.json(project);
 });
 
@@ -136,11 +142,11 @@ app.put('/api/projects/:id/pages', (req, res) => {
   if (!project) {
     return res.status(404).json({ error: 'Project not found' });
   }
-  
+
   project.pages = req.body.pages;
   project.updatedAt = Date.now();
   store.projects.set(project.id, project);
-  
+
   res.json({ success: true });
 });
 
@@ -150,12 +156,12 @@ app.get('/api/projects/:projectId/pages/:pageId', (req, res) => {
   if (!project) {
     return res.status(404).json({ error: 'Project not found' });
   }
-  
+
   const page = project.pages.find((p) => p.id === req.params.pageId);
   if (!page) {
     return res.status(404).json({ error: 'Page not found' });
   }
-  
+
   res.json(page);
 });
 
@@ -165,17 +171,17 @@ app.put('/api/projects/:projectId/pages/:pageId/data', (req, res) => {
   if (!project) {
     return res.status(404).json({ error: 'Project not found' });
   }
-  
+
   const pageIndex = project.pages.findIndex((p) => p.id === req.params.pageId);
   if (pageIndex === -1) {
     return res.status(404).json({ error: 'Page not found' });
   }
-  
+
   project.pages[pageIndex].data = req.body;
   project.pages[pageIndex].updatedAt = Date.now();
   project.updatedAt = Date.now();
   store.projects.set(project.id, project);
-  
+
   res.json({ success: true });
 });
 
@@ -186,7 +192,7 @@ app.post('/api/assets/upload', upload.single('file'), (req, res) => {
   if (!req.file) {
     return res.status(400).json({ error: 'No file uploaded' });
   }
-  
+
   const asset = {
     id: uuidv4(),
     filename: req.file.filename,
@@ -196,7 +202,7 @@ app.post('/api/assets/upload', upload.single('file'), (req, res) => {
     url: `/uploads/${req.file.filename}`,
     createdAt: Date.now(),
   };
-  
+
   store.assets.set(asset.id, asset);
   res.json({ url: asset.url, id: asset.id });
 });
@@ -206,11 +212,11 @@ app.post('/api/assets/svg', upload.single('file'), (req, res) => {
   if (!req.file) {
     return res.status(400).json({ error: 'No file uploaded' });
   }
-  
+
   if (!req.file.mimetype.includes('svg')) {
     return res.status(400).json({ error: 'File must be an SVG' });
   }
-  
+
   const asset = {
     id: uuidv4(),
     filename: req.file.filename,
@@ -220,7 +226,7 @@ app.post('/api/assets/svg', upload.single('file'), (req, res) => {
     url: `/uploads/${req.file.filename}`,
     createdAt: Date.now(),
   };
-  
+
   store.assets.set(asset.id, asset);
   res.json({ url: asset.url, id: asset.id });
 });
@@ -240,16 +246,20 @@ app.delete('/api/assets/:id', (req, res) => {
   if (!asset) {
     return res.status(404).json({ error: 'Asset not found' });
   }
-  
+
   // Delete file
   const filePath = path.join(__dirname, 'uploads', asset.filename);
   if (fs.existsSync(filePath)) {
     fs.unlinkSync(filePath);
   }
-  
+
   store.assets.delete(req.params.id);
   res.json({ success: true });
 });
+
+// ============== AI Routes ==============
+
+app.use('/api/ai', aiRoutes);
 
 // ============== Health Check ==============
 

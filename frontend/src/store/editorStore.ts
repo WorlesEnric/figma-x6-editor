@@ -6,31 +6,31 @@ interface EditorStore extends EditorState {
   // Graph instance
   graph: Graph | null;
   setGraph: (graph: Graph | null) => void;
- 
+
   // Theme
   theme: 'dark' | 'light';
   setTheme: (theme: 'dark' | 'light') => void;
   toggleTheme: () => void;
-  
+
   // Tool management
   setTool: (tool: ToolType) => void;
-  
+
   // Zoom
   setZoom: (zoom: number) => void;
   zoomIn: () => void;
   zoomOut: () => void;
   zoomToFit: () => void;
   zoomTo100: () => void;
-  
+
   // View options
   toggleGrid: () => void;
   toggleSnaplines: () => void;
   toggleMinimap: () => void;
-  
+
   // Drawing state
   setIsDrawing: (isDrawing: boolean) => void;
   setIsPanning: (isPanning: boolean) => void;
-  
+
   // History
   canUndo: boolean;
   canRedo: boolean;
@@ -52,7 +52,7 @@ export const useEditorStore = create<EditorStore>((set, get) => ({
   canUndo: false,
   canRedo: false,
   theme: (typeof window !== 'undefined' && (localStorage.getItem('editor-theme') as 'dark' | 'light')) || 'dark',
-  
+
   // Graph
   setGraph: (graph) => set({ graph }),
 
@@ -71,7 +71,7 @@ export const useEditorStore = create<EditorStore>((set, get) => ({
   // Tool
   setTool: (tool) => {
     const { graph, isPanning } = get();
-    
+
     // Handle hand tool (panning)
     if (tool === 'hand') {
       set({ tool, isPanning: true });
@@ -85,7 +85,7 @@ export const useEditorStore = create<EditorStore>((set, get) => ({
       }
     }
   },
-  
+
   // Zoom
   setZoom: (zoom) => {
     const { graph } = get();
@@ -95,17 +95,17 @@ export const useEditorStore = create<EditorStore>((set, get) => ({
       graph.zoomTo(clampedZoom / 100);
     }
   },
-  
+
   zoomIn: () => {
     const { zoom, setZoom } = get();
     setZoom(Math.min(zoom + 25, 500));
   },
-  
+
   zoomOut: () => {
     const { zoom, setZoom } = get();
     setZoom(Math.max(zoom - 25, 10));
   },
-  
+
   zoomToFit: () => {
     const { graph } = get();
     if (graph) {
@@ -114,12 +114,12 @@ export const useEditorStore = create<EditorStore>((set, get) => ({
       set({ zoom: Math.round(scale * 100) });
     }
   },
-  
+
   zoomTo100: () => {
     const { setZoom } = get();
     setZoom(100);
   },
-  
+
   // View options
   toggleGrid: () => {
     const { graph, showGrid } = get();
@@ -132,7 +132,7 @@ export const useEditorStore = create<EditorStore>((set, get) => ({
       }
     }
   },
-  
+
   toggleSnaplines: () => {
     const { graph, showSnaplines } = get();
     set({ showSnaplines: !showSnaplines });
@@ -144,23 +144,23 @@ export const useEditorStore = create<EditorStore>((set, get) => ({
       }
     }
   },
-  
+
   toggleMinimap: () => set((state) => ({ showMinimap: !state.showMinimap })),
-  
+
   // Drawing
   setIsDrawing: (isDrawing) => set({ isDrawing }),
   setIsPanning: (isPanning) => set({ isPanning }),
-  
+
   // History
   setHistoryState: (canUndo, canRedo) => set({ canUndo, canRedo }),
-  
+
   undo: () => {
     const { graph } = get();
     if (graph) {
       graph.undo();
     }
   },
-  
+
   redo: () => {
     const { graph } = get();
     if (graph) {
