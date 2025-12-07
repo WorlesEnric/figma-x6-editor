@@ -535,3 +535,311 @@ export async function getProviders(): Promise<any> {
         return null;
     }
 }
+
+/**
+ * 获取选中元素的信息，用于发送给 AI
+ */
+export function getSelectedElementInfo(): any | null {
+    const { graph } = useEditorStore.getState();
+    if (!graph) return null;
+
+    const selectedCells = graph.getSelectedCells();
+    if (selectedCells.length === 0) return null;
+
+    // 只处理第一个选中的元素
+    const cell = selectedCells[0];
+    if (!cell.isNode()) return null;
+
+    const node = cell;
+    const bbox = node.getBBox();
+    const attrs = node.getAttrs();
+
+    return {
+        id: node.id,
+        shape: node.shape,
+        x: Math.round(bbox.x),
+        y: Math.round(bbox.y),
+        width: Math.round(bbox.width),
+        height: Math.round(bbox.height),
+        label: attrs?.label?.text || '',
+        attrs: {
+            body: {
+                fill: attrs?.body?.fill || '#ffffff',
+                stroke: attrs?.body?.stroke || '#000000',
+                strokeWidth: attrs?.body?.strokeWidth || 1,
+                rx: attrs?.body?.rx,
+                ry: attrs?.body?.ry,
+            },
+            label: {
+                fill: attrs?.label?.fill || '#000000',
+                fontSize: attrs?.label?.fontSize || 14,
+                fontWeight: attrs?.label?.fontWeight,
+                fontFamily: attrs?.label?.fontFamily,
+            }
+        }
+    };
+}
+
+/**
+ * 发送样式修改的流式聊天请求
+ */
+export async function sendStyleChatMessage(
+    userMessage: string,
+    elementInfo: any,
+    onChunk: (chunk: string) => void,
+    onComplete: (fullContent: string) => void,
+    onError: (error: string) => void
+): Promise<void> {
+    const { config, messages } = useAIStore.getState();
+
+    // 构建消息历史
+    const recentMessages = messages.slice(-10).map((msg) => ({
+        role: msg.role,
+        content: msg.content,
+    }));
+
+    recentMessages.push({ role: 'user' as const, content: userMessage });
+
+    try {
+        const response = await fetch(`${API_BASE_URL}/ai/chat`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+                messages: recentMessages,
+                provider: config.provider,
+                model: config.model,
+                apiKey: config.apiKey,
+                baseURL: config.baseURL,
+                accessCode: config.accessCode,
+                temperature: config.temperature,
+                mode: 'style',
+                elementInfo: elementInfo,
+            }),
+        });
+
+        if (!response.ok) {
+            const error = await response.json();
+            throw new Error(error.error || 'Request failed');
+        }
+
+        const reader = response.body?.getReader();
+        const decoder = new TextDecoder();
+        let fullContent = '';
+
+        if (!reader) {
+            throw new Error('No response body');
+        }
+
+        while (true) {
+            const { done, value } = await reader.read();
+            if (done) break;
+
+            const chunk = decoder.decode(value, { stream: true });
+            const lines = chunk.split('\n');
+
+            for (const line of lines) {
+                if (line.startsWith('data: ')) {
+                    const data = line.slice(6);
+                    if (data === '[DONE]') {
+                        onComplete(fullContent);
+                        return;
+                    }
+
+                    try {
+                        const parsed = JSON.parse(data);
+                        if (parsed.content) {
+                            fullContent += parsed.content;
+                            onChunk(parsed.content);
+                        }
+                        if (parsed.error) {
+                            onError(parsed.error);
+                            return;
+                        }
+                    } catch {
+                        // 忽略解析错误
+                    }
+                }
+            }
+        }
+
+        onComplete(fullContent);
+    } catch (error: any) {
+        onError(error.message || 'Network error');
+    }
+}
+
+/**
+ * 解析 AI 响应中的样式修改数据
+ */
+export function parseStyleJSON(content: string): any | null {
+    // 从 <style-data> 标签中提取
+    const styleDataMatch = content.match(/<style-data>([\s\S]*?)<\/style-data>/);
+    if (styleDataMatch) {
+        try {
+            const parsed = JSON.parse(styleDataMatch[1].trim());
+            if (parsed.action === 'updateStyle') {
+                console.log('Parsed style data from <style-data> tag');
+                return parsed;
+            }
+        } catch (e) {
+            console.warn('Failed to parse <style-data> content:', e);
+        }
+    }
+
+    return null;
+}
+
+/**
+ * 将样式修改应用到选中的元素
+ * 支持更换图形类型（会删除原节点并创建新节点）
+ */
+export function applyStyleData(styleData: any, targetNodeId?: string): boolean {
+    const { graph } = useEditorStore.getState();
+    if (!graph) {
+        console.error('Graph not initialized');
+        return false;
+    }
+
+    // 获取目标节点
+    let node;
+    if (targetNodeId) {
+        node = graph.getCellById(targetNodeId);
+    } else {
+        const selectedCells = graph.getSelectedCells();
+        node = selectedCells.length > 0 ? selectedCells[0] : null;
+    }
+
+    if (!node || !node.isNode()) {
+        console.error('No valid node to apply style');
+        return false;
+    }
+
+    try {
+        // 检查是否需要更换图形类型
+        if (styleData.shape && styleData.shape !== node.shape) {
+            console.log('Shape type change requested:', node.shape, '->', styleData.shape);
+
+            // 保存原节点信息
+            const oldPosition = node.getPosition();
+            const oldSize = node.getSize();
+            const oldAttrs = node.getAttrs();
+            const oldData = node.getData();
+            const oldId = node.id;
+
+            // 获取连接到此节点的所有边
+            const connectedEdges = graph.getConnectedEdges(node);
+            const edgeConnections: Array<{
+                edge: any;
+                isSource: boolean;
+                sourcePortId?: string;
+                targetPortId?: string;
+            }> = [];
+
+            connectedEdges.forEach(edge => {
+                const sourceCell = edge.getSourceCell();
+                edgeConnections.push({
+                    edge,
+                    isSource: sourceCell?.id === oldId,
+                    sourcePortId: edge.getSourcePortId(),
+                    targetPortId: edge.getTargetPortId(),
+                });
+            });
+
+            // 计算新尺寸
+            const newWidth = styleData.size?.width || oldSize.width;
+            const newHeight = styleData.size?.height || oldSize.height;
+
+            // 创建新节点
+            const newNode = graph.addNode({
+                shape: styleData.shape,
+                x: oldPosition.x,
+                y: oldPosition.y,
+                width: newWidth,
+                height: newHeight,
+                data: oldData,
+            });
+
+            // 应用原有的样式属性
+            if (oldAttrs.body) {
+                for (const [key, value] of Object.entries(oldAttrs.body)) {
+                    // 跳过特定形状的特殊属性
+                    if (key !== 'refPoints' && key !== 'refD') {
+                        newNode.attr(`body/${key}`, value as string | number);
+                    }
+                }
+            }
+            if (oldAttrs.label) {
+                for (const [key, value] of Object.entries(oldAttrs.label)) {
+                    newNode.attr(`label/${key}`, value as string | number);
+                }
+            }
+
+            // 应用新的样式属性（覆盖原有属性）
+            if (styleData.attrs?.body) {
+                const bodyAttrs = styleData.attrs.body as Record<string, string | number>;
+                for (const [key, value] of Object.entries(bodyAttrs)) {
+                    newNode.attr(`body/${key}`, value as string | number);
+                }
+            }
+            if (styleData.attrs?.label) {
+                const labelAttrs = styleData.attrs.label as Record<string, string | number>;
+                for (const [key, value] of Object.entries(labelAttrs)) {
+                    newNode.attr(`label/${key}`, value as string | number);
+                }
+            }
+
+            // 重新连接边
+            edgeConnections.forEach(({ edge, isSource, sourcePortId, targetPortId }) => {
+                if (isSource) {
+                    edge.setSource({ cell: newNode.id, port: sourcePortId });
+                } else {
+                    edge.setTarget({ cell: newNode.id, port: targetPortId });
+                }
+            });
+
+            // 删除原节点
+            graph.removeNode(node.id);
+
+            // 选中新节点
+            graph.cleanSelection();
+            graph.select(newNode);
+
+            console.log('Shape type changed successfully. New node:', newNode.id);
+            return true;
+        }
+
+        // 普通样式修改（不更换形状类型）
+        // 应用 body 属性
+        if (styleData.attrs?.body) {
+            const bodyAttrs = styleData.attrs.body as Record<string, string | number>;
+            for (const [key, value] of Object.entries(bodyAttrs)) {
+                node.attr(`body/${key}`, value as string | number);
+            }
+        }
+
+        // 应用 label 属性
+        if (styleData.attrs?.label) {
+            const labelAttrs = styleData.attrs.label as Record<string, string | number>;
+            for (const [key, value] of Object.entries(labelAttrs)) {
+                node.attr(`label/${key}`, value as string | number);
+            }
+        }
+
+        // 应用尺寸
+        if (styleData.size) {
+            if (styleData.size.width) node.resize(styleData.size.width, node.getSize().height);
+            if (styleData.size.height) node.resize(node.getSize().width, styleData.size.height);
+            if (styleData.size.width && styleData.size.height) {
+                node.resize(styleData.size.width, styleData.size.height);
+            }
+        }
+
+        console.log('Style applied successfully to node:', node.id);
+        return true;
+    } catch (error) {
+        console.error('Failed to apply style data:', error);
+        return false;
+    }
+}

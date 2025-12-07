@@ -6,7 +6,8 @@ import { History } from '@antv/x6-plugin-history';
 import { Clipboard } from '@antv/x6-plugin-clipboard';
 import { Keyboard } from '@antv/x6-plugin-keyboard';
 import { Transform } from '@antv/x6-plugin-transform';
-import { useEditorStore, useSelectionStore, usePageStore } from '@/store';
+import { useEditorStore, useSelectionStore, usePageStore, useAIStore } from '@/store';
+import type { TargetElementInfo } from '@/store/aiStore';
 import { graphConfig } from '@/config/graphConfig';
 import { toolShortcuts } from '@/config/shortcuts';
 import { importGraphData, exportGraphData } from '@/utils/graphUtils';
@@ -572,6 +573,46 @@ export function Canvas() {
     }
   };
 
+  // AI 样式助手
+  const handleAIStyleAssist = () => {
+    if (!contextMenu.cell || !contextMenu.cell.isNode()) return;
+
+    const node = contextMenu.cell;
+    const bbox = node.getBBox();
+    const attrs = node.getAttrs();
+
+    // 构建目标元素信息
+    const elementInfo: TargetElementInfo = {
+      id: node.id,
+      shape: node.shape || 'unknown',
+      label: (attrs?.label?.text as string) || '',
+      x: Math.round(bbox.x),
+      y: Math.round(bbox.y),
+      width: Math.round(bbox.width),
+      height: Math.round(bbox.height),
+      attrs: {
+        body: {
+          fill: (attrs?.body?.fill as string) || '#ffffff',
+          stroke: (attrs?.body?.stroke as string) || '#000000',
+          strokeWidth: (attrs?.body?.strokeWidth as number) || 1,
+          rx: attrs?.body?.rx as number,
+          ry: attrs?.body?.ry as number,
+        },
+        label: {
+          fill: (attrs?.label?.fill as string) || '#000000',
+          fontSize: (attrs?.label?.fontSize as number) || 14,
+          fontWeight: attrs?.label?.fontWeight as string | number,
+          fontFamily: attrs?.label?.fontFamily as string,
+        }
+      }
+    };
+
+    // 存入 aiStore 并打开面板
+    const { setTargetElement, showPanel } = useAIStore.getState();
+    setTargetElement(elementInfo);
+    showPanel();
+  };
+
   return (
     <div
       ref={containerRef}
@@ -633,6 +674,7 @@ export function Canvas() {
         onSendToBack={handleSendToBack}
         onBringForward={handleBringForward}
         onSendBackward={handleSendBackward}
+        onAIStyleAssist={handleAIStyleAssist}
       />
     </div>
   );

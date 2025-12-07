@@ -218,16 +218,6 @@
     }
 }
 
-/* 输入区域 */
-.inputArea {
-    display: flex;
-    align-items: center;
-    gap: 8px;
-    padding: 12px 16px;
-    background: var(--color-bg-secondary);
-    border-top: 1px solid var(--color-border);
-}
-
 .clearButton {
     display: flex;
     align-items: center;
@@ -469,4 +459,69 @@
 
 .saveButton:hover {
     background: var(--color-accent-hover);
+}
+
+/* 输入区域重构 */
+.inputArea {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    padding: 12px 16px;
+    background: var(--color-bg-secondary);
+    border-top: 1px solid var(--color-border);
+}
+
+.inputRow {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+/* 附件标签区域 */
+.attachmentArea {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+}
+
+.attachmentTag {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 4px 10px;
+    background: linear-gradient(135deg, rgba(146, 84, 222, 0.15) 0%, rgba(114, 46, 209, 0.15) 100%);
+    border: 1px solid rgba(146, 84, 222, 0.3);
+    border-radius: 6px;
+    font-size: var(--font-size-xs);
+    color: #9254DE;
+    cursor: default;
+}
+
+.attachmentIcon {
+    flex-shrink: 0;
+    color: #9254DE;
+}
+
+.attachmentLabel {
+    font-weight: var(--font-weight-medium);
+}
+
+.attachmentRemove {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 2px;
+    margin-left: 2px;
+    background: transparent;
+    border: none;
+    border-radius: 3px;
+    color: #9254DE;
+    cursor: pointer;
+    opacity: 0.7;
+    transition: all 0.15s ease;
+}
+
+.attachmentRemove:hover {
+    opacity: 1;
+    background: rgba(146, 84, 222, 0.2);
 }

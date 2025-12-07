@@ -3,17 +3,27 @@
  */
 import { useRef, useEffect, useState, useCallback } from 'react';
 import { useAIStore } from '@/store';
-import { sendChatMessage, parseGraphJSON, applyGraphData } from '@/services/aiService';
-import { Bot, Send, X, Minimize2, Maximize2, GripVertical, Trash2, Settings, Copy, Check } from 'lucide-react';
+import {
+    sendChatMessage,
+    parseGraphJSON,
+    applyGraphData,
+    sendStyleChatMessage,
+    parseStyleJSON,
+    applyStyleData
+} from '@/services/aiService';
+import { Bot, Send, X, Minimize2, Maximize2, GripVertical, Trash2, Settings, Copy, Check, Palette } from 'lucide-react';
 import styles from './AIChatPanel.module.css';
 
 /**
- * 过滤消息内容，移除 <graph-data> 标签及其内容
+ * 过滤消息内容，移除 <graph-data> 和 <style-data> 标签及其内容
  * 只显示用户友好的自然语言描述
  */
 function filterDisplayContent(content: string): string {
     // 移除 <graph-data>...</graph-data> 标签及其内容
-    return content.replace(/<graph-data>[\s\S]*?<\/graph-data>/g, '').trim();
+    let filtered = content.replace(/<graph-data>[\s\S]*?<\/graph-data>/g, '').trim();
+    // 移除 <style-data>...</style-data> 标签及其内容
+    filtered = filtered.replace(/<style-data>[\s\S]*?<\/style-data>/g, '').trim();
+    return filtered;
 }
 
 export function AIChatPanel() {
@@ -33,7 +43,12 @@ export function AIChatPanel() {
         setPanelSize,
         clearMessages,
         setError,
+        targetElement,
+        clearTargetElement,
     } = useAIStore();
+
+    // 是否处于样式修改模式（由右键菜单触发）
+    const isStyleMode = targetElement !== null;
 
     const [inputValue, setInputValue] = useState('');
     const [isMinimized, setIsMinimized] = useState(false);
@@ -188,58 +203,123 @@ export function AIChatPanel() {
         // 添加一个空的 AI 消息占位
         addMessage('assistant', '');
 
-        // 发送请求
-        await sendChatMessage(
-            trimmedInput,
-            // onChunk
-            (chunk) => {
-                appendStreamingContent(chunk);
-            },
-            // onComplete
-            (fullContent) => {
-                setIsLoading(false);
+        // 检查是否为样式修改模式（使用从右键菜单传入的 targetElement）
+        const elementInfo = isStyleMode ? targetElement : null;
+        const targetNodeId = elementInfo?.id; // 记录目标节点 ID
 
-                // 更新最后一条消息
-                const currentMessages = useAIStore.getState().messages;
-                if (currentMessages.length > 0) {
-                    const lastIndex = currentMessages.length - 1;
-                    if (currentMessages[lastIndex].role === 'assistant') {
-                        currentMessages[lastIndex].content = fullContent;
-                        useAIStore.setState({ messages: [...currentMessages] });
+        if (elementInfo) {
+            // 样式修改模式
+            await sendStyleChatMessage(
+                trimmedInput,
+                elementInfo,
+                // onChunk
+                (chunk) => {
+                    appendStreamingContent(chunk);
+                },
+                // onComplete
+                (fullContent) => {
+                    setIsLoading(false);
+
+                    // 更新最后一条消息
+                    const currentMessages = useAIStore.getState().messages;
+                    if (currentMessages.length > 0) {
+                        const lastIndex = currentMessages.length - 1;
+                        if (currentMessages[lastIndex].role === 'assistant') {
+                            currentMessages[lastIndex].content = fullContent;
+                            useAIStore.setState({ messages: [...currentMessages] });
+                        }
+                    }
+
+                    setStreamingContent('');
+
+                    // 尝试解析样式修改数据并应用
+                    const styleData = parseStyleJSON(fullContent);
+                    if (styleData) {
+                        const success = applyStyleData(styleData, targetNodeId);
+                        if (success) {
+                            // 完成后清除目标元素，并在消息末尾追加成功提示
+                            clearTargetElement();
+                            const currentMessages = useAIStore.getState().messages;
+                            if (currentMessages.length > 0) {
+                                const lastIndex = currentMessages.length - 1;
+                                if (currentMessages[lastIndex].role === 'assistant') {
+                                    currentMessages[lastIndex].content = fullContent + '\n\n✅ 样式已成功应用！';
+                                    useAIStore.setState({ messages: [...currentMessages] });
+                                }
+                            }
+                        }
+                    }
+                },
+                // onError
+                (error) => {
+                    setIsLoading(false);
+                    setStreamingContent('');
+                    setError(error);
+
+                    const currentMessages = useAIStore.getState().messages;
+                    if (currentMessages.length > 0) {
+                        const lastIndex = currentMessages.length - 1;
+                        if (currentMessages[lastIndex].role === 'assistant' && !currentMessages[lastIndex].content) {
+                            currentMessages[lastIndex].content = `❌ 错误: ${error}`;
+                            useAIStore.setState({ messages: [...currentMessages] });
+                        }
                     }
                 }
+            );
+        } else {
+            // 图表生成模式
+            await sendChatMessage(
+                trimmedInput,
+                // onChunk
+                (chunk) => {
+                    appendStreamingContent(chunk);
+                },
+                // onComplete
+                (fullContent) => {
+                    setIsLoading(false);
 
-                setStreamingContent('');
+                    // 更新最后一条消息
+                    const currentMessages = useAIStore.getState().messages;
+                    if (currentMessages.length > 0) {
+                        const lastIndex = currentMessages.length - 1;
+                        if (currentMessages[lastIndex].role === 'assistant') {
+                            currentMessages[lastIndex].content = fullContent;
+                            useAIStore.setState({ messages: [...currentMessages] });
+                        }
+                    }
 
-                // 尝试解析图表数据并应用
-                const graphData = parseGraphJSON(fullContent);
-                if (graphData) {
-                    try {
-                        applyGraphData(graphData, false);
-                        // 添加成功提示
-                        addMessage('assistant', '✅ 图表已成功生成并添加到画布！');
-                    } catch (error) {
-                        console.error('Failed to apply graph data:', error);
+                    setStreamingContent('');
+
+                    // 尝试解析图表数据并应用
+                    const graphData = parseGraphJSON(fullContent);
+                    if (graphData) {
+                        try {
+                            applyGraphData(graphData, false);
+                            // 添加成功提示
+                            addMessage('assistant', '✅ 图表已成功生成并添加到画布！');
+                        } catch (error) {
+                            console.error('Failed to apply graph data:', error);
+                        }
+                    }
+                },
+                // onError
+                (error) => {
+                    setIsLoading(false);
+                    setStreamingContent('');
+                    setError(error);
+
+                    // 更新最后一条消息为错误信息
+                    const currentMessages = useAIStore.getState().messages;
+                    if (currentMessages.length > 0) {
+                        const lastIndex = currentMessages.length - 1;
+                        if (currentMessages[lastIndex].role === 'assistant' && !currentMessages[lastIndex].content) {
+                            currentMessages[lastIndex].content = `❌ 错误: ${error}`;
+                            useAIStore.setState({ messages: [...currentMessages] });
+                        }
                     }
                 }
-            },
-            // onError
-            (error) => {
-                setIsLoading(false);
-                setStreamingContent('');
-                setError(error);
-
-                // 更新最后一条消息为错误信息
-                const currentMessages = useAIStore.getState().messages;
-                if (currentMessages.length > 0) {
-                    const lastIndex = currentMessages.length - 1;
-                    if (currentMessages[lastIndex].role === 'assistant' && !currentMessages[lastIndex].content) {
-                        currentMessages[lastIndex].content = `❌ 错误: ${error}`;
-                        useAIStore.setState({ messages: [...currentMessages] });
-                    }
-                }
-            }
-        );
+            );
+        }
     };
 
     // 处理键盘事件
@@ -355,29 +435,47 @@ export function AIChatPanel() {
 
                     {/* 输入区域 */}
                     <div className={styles.inputArea}>
-                        <button
-                            className={styles.clearButton}
-                            onClick={clearMessages}
-                            title="清空对话"
-                        >
-                            <Trash2 size={16} />
-                        </button>
-                        <input
-                            type="text"
-                            className={styles.input}
-                            value={inputValue}
-                            onChange={(e) => setInputValue(e.target.value)}
-                            onKeyDown={handleKeyDown}
-                            placeholder="描述你想要的图表..."
-                            disabled={isLoading}
-                        />
-                        <button
-                            className={styles.sendButton}
-                            onClick={handleSend}
-                            disabled={isLoading || !inputValue.trim()}
-                        >
-                            <Send size={18} />
-                        </button>
+                        {/* 选中图形的附件标签 */}
+                        {isStyleMode && targetElement && (
+                            <div className={styles.attachmentArea}>
+                                <div className={styles.attachmentTag}>
+                                    <Palette size={14} className={styles.attachmentIcon} />
+                                    <span className={styles.attachmentLabel}>{targetElement.shape}</span>
+                                    <button
+                                        className={styles.attachmentRemove}
+                                        onClick={clearTargetElement}
+                                        title="移除"
+                                    >
+                                        <X size={12} />
+                                    </button>
+                                </div>
+                            </div>
+                        )}
+                        <div className={styles.inputRow}>
+                            <button
+                                className={styles.clearButton}
+                                onClick={clearMessages}
+                                title="清空对话"
+                            >
+                                <Trash2 size={16} />
+                            </button>
+                            <input
+                                type="text"
+                                className={styles.input}
+                                value={inputValue}
+                                onChange={(e) => setInputValue(e.target.value)}
+                                onKeyDown={handleKeyDown}
+                                placeholder={isStyleMode ? "描述你想要的样式修改..." : "描述你想要的图表..."}
+                                disabled={isLoading}
+                            />
+                            <button
+                                className={styles.sendButton}
+                                onClick={handleSend}
+                                disabled={isLoading || !inputValue.trim()}
+                            >
+                                <Send size={18} />
+                            </button>
+                        </div>
                     </div>
                 </>
             )}

@@ -1,11 +1,11 @@
 import { useState, useRef, useEffect } from 'react';
+import { SketchPicker } from 'react-color';
 import { useSelectionStore } from '@/store';
-import { ColorPicker } from '../common/ColorPicker';
 import styles from './RightPanel.module.css';
 
 export function FillStrokeEditor() {
   const { commonFill, commonStroke, updateSelectedFill, updateSelectedStroke } = useSelectionStore();
-  
+
   const [showFillPicker, setShowFillPicker] = useState(false);
   const [showStrokePicker, setShowStrokePicker] = useState(false);
   const fillPickerRef = useRef<HTMLDivElement>(null);
@@ -47,9 +47,14 @@ export function FillStrokeEditor() {
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, []);
 
-  const handleFillColorChange = (color: string) => {
+  const handleFillColorChange = (color: string, opacity?: number) => {
     setFillColor(color);
-    updateSelectedFill({ color });
+    if (opacity !== undefined) {
+      setFillOpacity(opacity);
+      updateSelectedFill({ color, opacity });
+    } else {
+      updateSelectedFill({ color });
+    }
   };
 
   const handleFillOpacityChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -59,9 +64,14 @@ export function FillStrokeEditor() {
     updateSelectedFill({ opacity: clamped });
   };
 
-  const handleStrokeColorChange = (color: string) => {
+  const handleStrokeColorChange = (color: string, opacity?: number) => {
     setStrokeColor(color);
-    updateSelectedStroke({ color });
+    if (opacity !== undefined) {
+      setStrokeOpacity(opacity);
+      updateSelectedStroke({ color, opacity });
+    } else {
+      updateSelectedStroke({ color });
+    }
   };
 
   const handleStrokeWidthChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -108,25 +118,43 @@ export function FillStrokeEditor() {
             Fill
           </div>
           <div className={styles.colorRow}>
-            <div 
-              className={styles.colorPreview}
-              onClick={() => setShowFillPicker(!showFillPicker)}
+            <div
               ref={fillPickerRef}
               style={{ position: 'relative' }}
             >
-              <div 
-                className={styles.colorSwatch} 
-                style={{ 
-                  backgroundColor: fillColor,
-                  opacity: fillOpacity,
-                }} 
-              />
+              <div
+                className={styles.colorPreview}
+                onClick={() => setShowFillPicker(!showFillPicker)}
+              >
+                <div
+                  className={styles.colorSwatch}
+                  style={{
+                    backgroundColor: fillColor,
+                    opacity: fillOpacity,
+                  }}
+                />
+              </div>
               {showFillPicker && (
                 <div className={styles.colorPickerPopover}>
-                  <ColorPicker
-                    value={fillColor}
-                    onChange={handleFillColorChange}
+                  <SketchPicker
+                    color={fillColor}
+                    onChange={(color) => {
+                      const newColor = color.rgb.a === 1
+                        ? color.hex
+                        : `rgba(${color.rgb.r}, ${color.rgb.g}, ${color.rgb.b}, ${color.rgb.a})`;
+                      const newOpacity = color.rgb.a ?? 1;
+                      handleFillColorChange(newColor, newOpacity);
+                    }}
                   />
+                  <div style={{ marginTop: '8px', textAlign: 'right' }}>
+                    <button
+                      className={styles.toolbarButton}
+                      style={{ width: 'auto', padding: '0 8px', fontSize: '12px', border: '1px solid var(--color-border)' }}
+                      onClick={() => setShowFillPicker(false)}
+                    >
+                      Close
+                    </button>
+                  </div>
                 </div>
               )}
             </div>
@@ -158,25 +186,43 @@ export function FillStrokeEditor() {
             Stroke
           </div>
           <div className={styles.colorRow}>
-            <div 
-              className={styles.colorPreview}
-              onClick={() => setShowStrokePicker(!showStrokePicker)}
+            <div
               ref={strokePickerRef}
               style={{ position: 'relative' }}
             >
-              <div 
-                className={styles.colorSwatch} 
-                style={{ 
-                  backgroundColor: strokeColor,
-                  opacity: strokeOpacity,
-                }} 
-              />
+              <div
+                className={styles.colorPreview}
+                onClick={() => setShowStrokePicker(!showStrokePicker)}
+              >
+                <div
+                  className={styles.colorSwatch}
+                  style={{
+                    backgroundColor: strokeColor,
+                    opacity: strokeOpacity,
+                  }}
+                />
+              </div>
               {showStrokePicker && (
                 <div className={styles.colorPickerPopover}>
-                  <ColorPicker
-                    value={strokeColor}
-                    onChange={handleStrokeColorChange}
+                  <SketchPicker
+                    color={strokeColor}
+                    onChange={(color) => {
+                      const newColor = color.rgb.a === 1
+                        ? color.hex
+                        : `rgba(${color.rgb.r}, ${color.rgb.g}, ${color.rgb.b}, ${color.rgb.a})`;
+                      const newOpacity = color.rgb.a ?? 1;
+                      handleStrokeColorChange(newColor, newOpacity);
+                    }}
                   />
+                  <div style={{ marginTop: '8px', textAlign: 'right' }}>
+                    <button
+                      className={styles.toolbarButton}
+                      style={{ width: 'auto', padding: '0 8px', fontSize: '12px', border: '1px solid var(--color-border)' }}
+                      onClick={() => setShowStrokePicker(false)}
+                    >
+                      Close
+                    </button>
+                  </div>
                 </div>
               )}
             </div>

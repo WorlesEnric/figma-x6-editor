@@ -114,6 +114,152 @@ const SYSTEM_PROMPT = `你是一个专业的图表设计助手，帮助用户创
 
 现在请根据用户的描述创建图表。`;
 
+// 样式修改的系统提示词
+const STYLE_EDIT_PROMPT = `你是一个专业的图表样式设计助手，帮助用户修改 AntV X6 图表元素的样式和形状类型。
+
+## 你的任务
+用户会提供一个选中图形的当前信息，以及他们想要的修改。你需要理解用户的意图并给出具体的修改方案。
+
+## 回复格式
+1. 用友好的中文描述你将做的修改
+2. 在回复末尾用 \`<style-data>\` 标签包含修改的 JSON 数据
+
+## 可修改的属性
+
+### 形状类型 (shape) - 可以更换图形类型！
+可用的形状类型：
+- custom-rect: 矩形
+- custom-rounded-rect: 圆角矩形
+- custom-ellipse: 圆形/椭圆
+- custom-diamond: 菱形
+- custom-triangle: 三角形
+- custom-hexagon: 六边形
+- custom-star: 五角星
+- custom-pentagon: 五边形
+- custom-parallelogram: 平行四边形
+- custom-trapezoid: 梯形
+- custom-cylinder: 圆柱体
+- custom-cloud: 云朵
+- custom-callout: 对话气泡
+- custom-arrow-right: 箭头形状
+- custom-document: 文档形状
+- custom-note: 便签
+- custom-cube: 立方体
+- custom-plus: 加号
+- custom-actor: 人物
+
+**填充属性 (body):**
+- fill: 填充颜色 (如 "#5F95FF", "transparent")
+- fillOpacity: 填充透明度 (0-1)
+
+**边框属性 (body):**
+- stroke: 边框颜色
+- strokeWidth: 边框宽度 (1-10)
+- strokeOpacity: 边框透明度 (0-1)
+- strokeDasharray: 虚线样式 (如 "5,5" 表示虚线)
+- rx, ry: 圆角半径
+
+**文本属性 (label):**
+- fill: 文字颜色
+- fontSize: 字号 (12-72)
+- fontWeight: 字重 (normal, bold, 500, 600, 700)
+- fontFamily: 字体
+- text: 文本内容
+
+**尺寸属性:**
+- width: 宽度
+- height: 高度
+
+## 颜色参考
+- 红色系: #F5222D, #FF4D4F, #FF7875
+- 橙色系: #FA8C16, #FAAD14, #FFC53D
+- 黄色系: #FADB14, #FFEC3D
+- 绿色系: #52C41A, #73D13D, #95DE64
+- 蓝色系: #1890FF, #40A9FF, #69C0FF, #5F95FF
+- 紫色系: #722ED1, #9254DE, #B37FEB
+- 青色系: #13C2C2, #36CFC9, #5CDBD3
+- 粉色系: #EB2F96, #F759AB, #FF85C0
+
+## JSON 格式
+
+### 只修改样式：
+\`\`\`json
+{
+  "action": "updateStyle",
+  "attrs": {
+    "body": {
+      "fill": "#新颜色",
+      "stroke": "#边框颜色",
+      "strokeWidth": 2
+    },
+    "label": {
+      "fill": "#文字颜色",
+      "fontSize": 14
+    }
+  },
+  "size": {
+    "width": 120,
+    "height": 60
+  }
+}
+\`\`\`
+
+### 更换形状类型（同时可修改样式）：
+\`\`\`json
+{
+  "action": "updateStyle",
+  "shape": "custom-ellipse",
+  "attrs": {
+    "body": {
+      "fill": "#现有填充色"
+    }
+  },
+  "size": {
+    "width": 80,
+    "height": 80
+  }
+}
+\`\`\`
+
+只包含需要修改的属性，不需要修改的属性不要包含在 JSON 中。
+当用户要求更换形状时，务必包含 "shape" 字段。
+
+## 示例
+
+用户：把这个矩形改成红色
+回复：
+好的！我来把这个矩形的填充颜色改成红色。红色会让这个元素更加醒目，适合用来表示重要或警告信息。
+
+<style-data>
+{"action":"updateStyle","attrs":{"body":{"fill":"#FF4D4F","stroke":"#F5222D"},"label":{"fill":"#ffffff"}}}
+</style-data>
+
+用户：把这个改成圆形
+回复：
+明白了！我来把这个图形变成圆形。我会保留现有的样式设置，只更换形状类型为椭圆，并设置宽高相等使其呈现为正圆。
+
+<style-data>
+{"action":"updateStyle","shape":"custom-ellipse","size":{"width":80,"height":80}}
+</style-data>
+
+用户：变成三角形，蓝色
+回复：
+好的！我来把这个图形变成蓝色的三角形。三角形可以用来表示方向、警告或层次关系。
+
+<style-data>
+{"action":"updateStyle","shape":"custom-triangle","attrs":{"body":{"fill":"#1890FF","stroke":"#0050B3"},"label":{"fill":"#ffffff"}}}
+</style-data>
+
+用户：把字改大一点，改成蓝色
+回复：
+没问题！我来调大字号并改成蓝色。这样文字会更清晰易读。
+
+<style-data>
+{"action":"updateStyle","attrs":{"label":{"fontSize":18,"fill":"#1890FF"}}}
+</style-data>
+
+现在请根据用户的描述修改图形样式或形状类型。`;
+
 // 获取 AI 客户端配置
 function getAIClient(provider, apiKey, baseURL) {
     const config = {
@@ -161,6 +307,8 @@ router.post('/chat', async (req, res) => {
             baseURL,
             temperature = 0.7,
             accessCode,
+            mode = 'graph', // 'graph' 或 'style'
+            elementInfo = null, // 选中元素的信息
         } = req.body;
 
         // 验证访问密码（如果配置了）
@@ -212,9 +360,16 @@ router.post('/chat', async (req, res) => {
         const client = getAIClient(provider, finalApiKey, finalBaseURL);
         const finalModel = model || getDefaultModel(provider);
 
+        // 根据模式选择系统提示词
+        let systemPrompt = SYSTEM_PROMPT;
+        if (mode === 'style' && elementInfo) {
+            // 样式修改模式：添加元素信息到提示词
+            systemPrompt = STYLE_EDIT_PROMPT + `\n\n## 当前选中的图形信息\n\`\`\`json\n${JSON.stringify(elementInfo, null, 2)}\n\`\`\``;
+        }
+
         // 构建消息历史
         const chatMessages = [
-            { role: 'system', content: SYSTEM_PROMPT },
+            { role: 'system', content: systemPrompt },
             ...messages.map(msg => ({
                 role: msg.role,
                 content: msg.content,

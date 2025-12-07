@@ -20,6 +20,32 @@ export interface AIConfig {
     temperature: number;
 }
 
+// 目标元素信息（用于样式修改模式）
+export interface TargetElementInfo {
+    id: string;
+    shape: string;
+    label?: string;
+    x: number;
+    y: number;
+    width: number;
+    height: number;
+    attrs: {
+        body: {
+            fill?: string;
+            stroke?: string;
+            strokeWidth?: number;
+            rx?: number;
+            ry?: number;
+        };
+        label: {
+            fill?: string;
+            fontSize?: number;
+            fontWeight?: string | number;
+            fontFamily?: string;
+        };
+    };
+}
+
 interface AIStore {
     // 消息历史
     messages: Message[];
@@ -55,6 +81,11 @@ interface AIStore {
     // 错误处理
     error: string | null;
     setError: (error: string | null) => void;
+
+    // 目标元素（样式修改模式）
+    targetElement: TargetElementInfo | null;
+    setTargetElement: (element: TargetElementInfo) => void;
+    clearTargetElement: () => void;
 }
 
 export const useAIStore = create<AIStore>()(
@@ -143,6 +174,11 @@ export const useAIStore = create<AIStore>()(
 
             // 错误处理
             setError: (error) => set({ error }),
+
+            // 目标元素（样式修改模式）
+            targetElement: null,
+            setTargetElement: (element) => set({ targetElement: element }),
+            clearTargetElement: () => set({ targetElement: null }),
         }),
         {
             name: 'ai-store',
