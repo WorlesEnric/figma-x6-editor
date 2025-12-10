@@ -8,12 +8,9 @@ const { v4: uuidv4 } = require('uuid');
 const path = require('path');
 const fs = require('fs');
 
-// Import AI routes
-const aiRoutes = require('./routes/ai');
-const aiStreamRoutes = require('./routes/ai-stream');
 
 const app = express();
-const PORT = 3001;
+const PORT = process.env.PORT || 3001;
 
 // Middleware
 app.use(cors());
@@ -258,10 +255,11 @@ app.delete('/api/assets/:id', (req, res) => {
   res.json({ success: true });
 });
 
-// ============== AI Routes ==============
 
-app.use('/api/ai', aiRoutes);
-app.use('/api/ai-stream', aiStreamRoutes);
+// ============== MCP Routes ==============
+
+const mcpRoutes = require('./routes/mcp');
+app.use('/api/mcp', mcpRoutes);
 
 // ============== Health Check ==============
 

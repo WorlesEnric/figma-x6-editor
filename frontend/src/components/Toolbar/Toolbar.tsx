@@ -1,11 +1,10 @@
-import { useEditorStore, useAIStore } from '@/store';
+import { useEditorStore } from '@/store';
 import { IconButton } from '../common/Button';
 import { Icon } from '../common/Icon';
 import { ShapeDropdown } from './ShapeDropdown';
 import { ZoomControls } from './ZoomControls';
 import type { ToolType } from '@/types';
 import styles from './Toolbar.module.css';
-import { Bot } from 'lucide-react';
 
 export function Toolbar() {
   const {
@@ -23,7 +22,6 @@ export function Toolbar() {
     toggleTheme,
   } = useEditorStore();
 
-  const { isPanelVisible, togglePanel } = useAIStore();
 
   const handleToolChange = (newTool: ToolType) => {
     setTool(newTool);
@@ -144,18 +142,6 @@ export function Toolbar() {
         <div className={styles.divider} />
 
         <ZoomControls />
-
-        <div className={styles.divider} />
-
-        {/* AI Assistant Button */}
-        <button
-          className={`${styles.aiButton} ${isPanelVisible ? styles.aiButtonActive : ''}`}
-          onClick={togglePanel}
-          title="AI 助手 (Ctrl+L)"
-        >
-          <Bot size={18} />
-          <span>AI 助手</span>
-        </button>
       </div>
     </div>
   );

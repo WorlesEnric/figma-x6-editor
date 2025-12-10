@@ -3,7 +3,6 @@ import { Canvas } from '../Canvas';
 import { Toolbar } from '../Toolbar/Toolbar';
 import { LeftPanel } from '../LeftPanel/LeftPanel';
 import { RightPanel } from '../RightPanel/RightPanel';
-import { AIChatPanel } from '../AIChatPanel';
 import { useEditorStore, usePageStore } from '@/store';
 import { registerAllShapes } from '@/shapes';
 import styles from './App.module.css';
@@ -38,9 +37,6 @@ export function App() {
         </div>
         <RightPanel />
       </div>
-
-      {/* AI Chat Panel - Floating Window */}
-      <AIChatPanel />
     </div>
   );
 }

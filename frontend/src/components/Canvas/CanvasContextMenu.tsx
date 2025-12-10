@@ -1,7 +1,6 @@
 import { useEffect, useRef } from 'react';
 import type { Cell } from '@antv/x6';
 import { Icon } from '../common/Icon';
-import { Bot } from 'lucide-react';
 
 interface ContextMenuProps {
     visible: boolean;
@@ -18,7 +17,6 @@ interface ContextMenuProps {
     onSendToBack: () => void;
     onBringForward: () => void;
     onSendBackward: () => void;
-    onAIStyleAssist?: () => void;
 }
 
 export function CanvasContextMenu({
@@ -36,7 +34,6 @@ export function CanvasContextMenu({
     onSendToBack,
     onBringForward,
     onSendBackward,
-    onAIStyleAssist,
 }: ContextMenuProps) {
     const menuRef = useRef<HTMLDivElement>(null);
 
@@ -128,18 +125,6 @@ export function CanvasContextMenu({
                 minWidth: '180px',
             }}
         >
-            {/* Add to Chat - only for nodes */}
-            {isNode && onAIStyleAssist && (
-                <>
-                    <MenuItem
-                        label="Add to Chat"
-                        customIcon={<Bot size={14} style={{ color: '#9254DE' }} />}
-                        onClick={onAIStyleAssist}
-                        color="#9254DE"
-                    />
-                    <Divider />
-                </>
-            )}
             <MenuItem label="Delete" icon="trash-2" onClick={onDelete} color="#ef4444" />
             <Divider />
             <MenuItem label="Cut" icon="scissors" onClick={onCut} />

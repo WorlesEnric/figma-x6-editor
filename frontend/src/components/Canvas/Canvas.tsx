@@ -6,8 +6,7 @@ import { History } from '@antv/x6-plugin-history';
 import { Clipboard } from '@antv/x6-plugin-clipboard';
 import { Keyboard } from '@antv/x6-plugin-keyboard';
 import { Transform } from '@antv/x6-plugin-transform';
-import { useEditorStore, useSelectionStore, usePageStore, useAIStore } from '@/store';
-import type { TargetElementInfo } from '@/store/aiStore';
+import { useEditorStore, useSelectionStore, usePageStore } from '@/store';
 import { graphConfig } from '@/config/graphConfig';
 import { toolShortcuts } from '@/config/shortcuts';
 import { importGraphData, exportGraphData } from '@/utils/graphUtils';
@@ -20,6 +19,7 @@ export function Canvas() {
   const graphRef = useRef<Graph | null>(null);
   const [textEdit, setTextEdit] = useState<{ nodeId: string; value: string; x: number; y: number; width: number; height: number; fontSize: number; fontFamily: string; color: string } | null>(null);
   const [contextMenu, setContextMenu] = useState<{ visible: boolean; x: number; y: number; cell: Cell | null }>({ visible: false, x: 0, y: 0, cell: null });
+  const [lineDrawing, setLineDrawing] = useState<{ startPoint: { x: number; y: number } | null; tool: 'line' | 'arrow' | null }>({ startPoint: null, tool: null });
 
   const {
     setGraph,
@@ -340,10 +340,15 @@ export function Canvas() {
       return false;
     });
 
-    // Escape to deselect
+    // Escape to deselect or cancel line drawing
     graph.bindKey('escape', () => {
-      graph.cleanSelection();
-      setTool('select');
+      if (lineDrawing.startPoint) {
+        // Cancel line drawing
+        setLineDrawing({ startPoint: null, tool: null });
+      } else {
+        graph.cleanSelection();
+        setTool('select');
+      }
       return false;
     });
 
@@ -354,7 +359,7 @@ export function Canvas() {
       graphRef.current = null;
       setGraph(null);
     };
-  }, []);
+  }, [lineDrawing]);
 
   // Handle page changes
   useEffect(() => {
@@ -392,7 +397,12 @@ export function Canvas() {
     } else {
       graph.enableSelection();
     }
-  }, [tool]);
+
+    // Reset line drawing when switching away from line/arrow tools
+    if (tool !== 'line' && tool !== 'arrow' && lineDrawing.startPoint) {
+      setLineDrawing({ startPoint: null, tool: null });
+    }
+  }, [tool, lineDrawing]);
 
   // Handle grid visibility
   useEffect(() => {
@@ -447,13 +457,45 @@ export function Canvas() {
     if (!graphRef.current) return;
 
     const graph = graphRef.current;
+    const point = graph.clientToLocal(e.clientX, e.clientY);
+
+    // Handle line/arrow drawing (two-click mode)
+    if (tool === 'line' || tool === 'arrow') {
+      if (!lineDrawing.startPoint) {
+        // First click: set start point
+        setLineDrawing({ startPoint: point, tool: tool as 'line' | 'arrow' });
+      } else {
+        // Second click: create the line/arrow
+        const edgeShape = tool === 'arrow' ? 'custom-arrow' : 'custom-line';
+        
+        // Create edge with point coordinates
+        const edge = graph.addEdge({
+          shape: edgeShape,
+          source: { x: lineDrawing.startPoint.x, y: lineDrawing.startPoint.y },
+          target: { x: point.x, y: point.y },
+          attrs: {
+            line: {
+              stroke: '#808080',
+              strokeWidth: 2,
+            },
+          },
+        });
+
+        graph.cleanSelection();
+        graph.select(edge);
+
+        // Reset line drawing state
+        setLineDrawing({ startPoint: null, tool: null });
+        // Switch back to select tool
+        setTool('select');
+      }
+      return;
+    }
 
     // Only create shapes in drawing mode
     if (!['rectangle', 'ellipse', 'diamond', 'triangle', 'text', 'frame'].includes(tool)) {
       return;
     }
-
-    const point = graph.clientToLocal(e.clientX, e.clientY);
 
     const shapeMap: Record<string, { shape: string; width: number; height: number }> = {
       rectangle: { shape: 'custom-rect', width: 100, height: 60 },
@@ -480,7 +522,7 @@ export function Canvas() {
 
     // Switch back to select tool
     setTool('select');
-  }, [tool, setTool]);
+  }, [tool, setTool, lineDrawing]);
 
   const commitTextEdit = useCallback(() => {
     if (!graphRef.current || !textEdit) return;
@@ -573,45 +615,6 @@ export function Canvas() {
     }
   };
 
-  // AI 样式助手
-  const handleAIStyleAssist = () => {
-    if (!contextMenu.cell || !contextMenu.cell.isNode()) return;
-
-    const node = contextMenu.cell;
-    const bbox = node.getBBox();
-    const attrs = node.getAttrs();
-
-    // 构建目标元素信息
-    const elementInfo: TargetElementInfo = {
-      id: node.id,
-      shape: node.shape || 'unknown',
-      label: (attrs?.label?.text as string) || '',
-      x: Math.round(bbox.x),
-      y: Math.round(bbox.y),
-      width: Math.round(bbox.width),
-      height: Math.round(bbox.height),
-      attrs: {
-        body: {
-          fill: (attrs?.body?.fill as string) || '#ffffff',
-          stroke: (attrs?.body?.stroke as string) || '#000000',
-          strokeWidth: (attrs?.body?.strokeWidth as number) || 1,
-          rx: attrs?.body?.rx as number,
-          ry: attrs?.body?.ry as number,
-        },
-        label: {
-          fill: (attrs?.label?.fill as string) || '#000000',
-          fontSize: (attrs?.label?.fontSize as number) || 14,
-          fontWeight: attrs?.label?.fontWeight as string | number,
-          fontFamily: attrs?.label?.fontFamily as string,
-        }
-      }
-    };
-
-    // 存入 aiStore 并打开面板
-    const { setTargetElement, showPanel } = useAIStore.getState();
-    setTargetElement(elementInfo);
-    showPanel();
-  };
 
   return (
     <div
@@ -619,6 +622,7 @@ export function Canvas() {
       className="canvas-container"
       data-tool={tool}
       onClick={handleCanvasClick}
+      style={{ cursor: (tool === 'line' || tool === 'arrow') && lineDrawing.startPoint ? 'crosshair' : undefined }}
     >
       {textEdit && (
         <textarea
@@ -674,7 +678,6 @@ export function Canvas() {
         onSendToBack={handleSendToBack}
         onBringForward={handleBringForward}
         onSendBackward={handleSendBackward}
-        onAIStyleAssist={handleAIStyleAssist}
       />
     </div>
   );
