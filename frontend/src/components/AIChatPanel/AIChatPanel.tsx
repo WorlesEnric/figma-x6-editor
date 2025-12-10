@@ -1,5 +1,6 @@
 /**
  * AI 聊天面板 - 可拖拽、可缩放的悬浮窗口
+ * 支持流式工具调用实现实时图表渲染
  */
 import { useRef, useEffect, useState, useCallback } from 'react';
 import { useAIStore } from '@/store';
@@ -11,8 +12,16 @@ import {
     parseStyleJSON,
     applyStyleData
 } from '@/services/aiService';
+import {
+    sendStreamChat,
+    applyStreamGraphData,
+    applyStreamStyleData,
+} from '@/services/aiStreamService';
 import { Bot, Send, X, Minimize2, Maximize2, GripVertical, Trash2, Settings, Copy, Check, Palette } from 'lucide-react';
 import styles from './AIChatPanel.module.css';
+
+// 是否使用流式工具调用（新模式）- 测试 MiniMax 工具调用
+const USE_STREAM_MODE = true;
 
 /**
  * 过滤消息内容，移除 <graph-data> 和 <style-data> 标签及其内容
@@ -188,7 +197,7 @@ export function AIChatPanel() {
         }
     }, [isResizing, handleResize, handleResizeEnd]);
 
-    // 发送消息
+    // 发送消息 - 使用流式工具调用
     const handleSend = async () => {
         const trimmedInput = inputValue.trim();
         if (!trimmedInput || isLoading) return;
@@ -203,122 +212,173 @@ export function AIChatPanel() {
         // 添加一个空的 AI 消息占位
         addMessage('assistant', '');
 
-        // 检查是否为样式修改模式（使用从右键菜单传入的 targetElement）
+        // 检查是否为样式修改模式
         const elementInfo = isStyleMode ? targetElement : null;
-        const targetNodeId = elementInfo?.id; // 记录目标节点 ID
+        const targetNodeId = elementInfo?.id;
 
-        if (elementInfo) {
-            // 样式修改模式
-            await sendStyleChatMessage(
-                trimmedInput,
-                elementInfo,
-                // onChunk
-                (chunk) => {
-                    appendStreamingContent(chunk);
-                },
-                // onComplete
-                (fullContent) => {
-                    setIsLoading(false);
+        // 构建消息历史
+        const currentMessages = useAIStore.getState().messages;
+        const chatHistory = currentMessages
+            .filter(msg => msg.content) // 过滤空消息
+            .slice(0, -1) // 排除刚添加的空占位消息
+            .map(msg => ({
+                role: msg.role,
+                content: msg.content,
+            }));
 
-                    // 更新最后一条消息
-                    const currentMessages = useAIStore.getState().messages;
-                    if (currentMessages.length > 0) {
-                        const lastIndex = currentMessages.length - 1;
-                        if (currentMessages[lastIndex].role === 'assistant') {
-                            currentMessages[lastIndex].content = fullContent;
-                            useAIStore.setState({ messages: [...currentMessages] });
-                        }
+        // 添加当前消息
+        chatHistory.push({ role: 'user', content: trimmedInput });
+
+        let fullText = '';
+
+        try {
+            if (USE_STREAM_MODE) {
+                // 使用新的流式工具调用
+                await sendStreamChat(
+                    chatHistory,
+                    {
+                        onTextDelta: (text) => {
+                            fullText += text;
+                            appendStreamingContent(text);
+                        },
+                        onToolCallStart: (toolName, toolCallId) => {
+                            console.log('Tool call started:', toolName, toolCallId);
+                        },
+                        onToolCall: (toolName, args) => {
+                            console.log('Tool call complete:', toolName, args);
+
+                            if (toolName === 'create_graph') {
+                                // 应用图表数据
+                                const success = applyStreamGraphData(args);
+                                if (success) {
+                                    fullText += '\n\n✅ 图表已成功生成并添加到画布！';
+                                }
+                            } else if (toolName === 'update_style') {
+                                // 应用样式修改
+                                const success = applyStreamStyleData(args, targetNodeId);
+                                if (success) {
+                                    fullText += '\n\n✅ 样式已成功应用！';
+                                    clearTargetElement();
+                                }
+                            }
+                        },
+                        onError: (error) => {
+                            setError(error);
+                            fullText += `\n\n❌ 错误: ${error}`;
+                        },
+                        onFinish: () => {
+                            setIsLoading(false);
+                            setStreamingContent('');
+
+                            // 更新最后一条消息
+                            const msgs = useAIStore.getState().messages;
+                            if (msgs.length > 0) {
+                                const lastIndex = msgs.length - 1;
+                                if (msgs[lastIndex].role === 'assistant') {
+                                    msgs[lastIndex].content = fullText;
+                                    useAIStore.setState({ messages: [...msgs] });
+                                }
+                            }
+                        },
+                    },
+                    {
+                        mode: elementInfo ? 'style' : 'graph',
+                        elementInfo: elementInfo,
                     }
-
-                    setStreamingContent('');
-
-                    // 尝试解析样式修改数据并应用
-                    const styleData = parseStyleJSON(fullContent);
-                    if (styleData) {
-                        const success = applyStyleData(styleData, targetNodeId);
-                        if (success) {
-                            // 完成后清除目标元素，并在消息末尾追加成功提示
-                            clearTargetElement();
-                            const currentMessages = useAIStore.getState().messages;
-                            if (currentMessages.length > 0) {
-                                const lastIndex = currentMessages.length - 1;
-                                if (currentMessages[lastIndex].role === 'assistant') {
-                                    currentMessages[lastIndex].content = fullContent + '\n\n✅ 样式已成功应用！';
-                                    useAIStore.setState({ messages: [...currentMessages] });
+                );
+            } else {
+                // 回退到旧的服务
+                if (elementInfo) {
+                    await sendStyleChatMessage(
+                        trimmedInput,
+                        elementInfo,
+                        (chunk) => appendStreamingContent(chunk),
+                        (fullContent) => {
+                            setIsLoading(false);
+                            const msgs = useAIStore.getState().messages;
+                            if (msgs.length > 0) {
+                                const lastIndex = msgs.length - 1;
+                                if (msgs[lastIndex].role === 'assistant') {
+                                    msgs[lastIndex].content = fullContent;
+                                    useAIStore.setState({ messages: [...msgs] });
+                                }
+                            }
+                            setStreamingContent('');
+                            const styleData = parseStyleJSON(fullContent);
+                            if (styleData) {
+                                const success = applyStyleData(styleData, targetNodeId);
+                                if (success) {
+                                    clearTargetElement();
+                                    const msgs = useAIStore.getState().messages;
+                                    if (msgs.length > 0) {
+                                        const lastIndex = msgs.length - 1;
+                                        if (msgs[lastIndex].role === 'assistant') {
+                                            msgs[lastIndex].content = fullContent + '\n\n✅ 样式已成功应用！';
+                                            useAIStore.setState({ messages: [...msgs] });
+                                        }
+                                    }
+                                }
+                            }
+                        },
+                        (error) => {
+                            setIsLoading(false);
+                            setStreamingContent('');
+                            setError(error);
+                            const msgs = useAIStore.getState().messages;
+                            if (msgs.length > 0) {
+                                const lastIndex = msgs.length - 1;
+                                if (msgs[lastIndex].role === 'assistant' && !msgs[lastIndex].content) {
+                                    msgs[lastIndex].content = `❌ 错误: ${error}`;
+                                    useAIStore.setState({ messages: [...msgs] });
                                 }
                             }
                         }
-                    }
-                },
-                // onError
-                (error) => {
-                    setIsLoading(false);
-                    setStreamingContent('');
-                    setError(error);
-
-                    const currentMessages = useAIStore.getState().messages;
-                    if (currentMessages.length > 0) {
-                        const lastIndex = currentMessages.length - 1;
-                        if (currentMessages[lastIndex].role === 'assistant' && !currentMessages[lastIndex].content) {
-                            currentMessages[lastIndex].content = `❌ 错误: ${error}`;
-                            useAIStore.setState({ messages: [...currentMessages] });
+                    );
+                } else {
+                    await sendChatMessage(
+                        trimmedInput,
+                        (chunk) => appendStreamingContent(chunk),
+                        (fullContent) => {
+                            setIsLoading(false);
+                            const msgs = useAIStore.getState().messages;
+                            if (msgs.length > 0) {
+                                const lastIndex = msgs.length - 1;
+                                if (msgs[lastIndex].role === 'assistant') {
+                                    msgs[lastIndex].content = fullContent;
+                                    useAIStore.setState({ messages: [...msgs] });
+                                }
+                            }
+                            setStreamingContent('');
+                            const graphData = parseGraphJSON(fullContent);
+                            if (graphData) {
+                                try {
+                                    applyGraphData(graphData, false);
+                                    addMessage('assistant', '✅ 图表已成功生成并添加到画布！');
+                                } catch (error) {
+                                    console.error('Failed to apply graph data:', error);
+                                }
+                            }
+                        },
+                        (error) => {
+                            setIsLoading(false);
+                            setStreamingContent('');
+                            setError(error);
+                            const msgs = useAIStore.getState().messages;
+                            if (msgs.length > 0) {
+                                const lastIndex = msgs.length - 1;
+                                if (msgs[lastIndex].role === 'assistant' && !msgs[lastIndex].content) {
+                                    msgs[lastIndex].content = `❌ 错误: ${error}`;
+                                    useAIStore.setState({ messages: [...msgs] });
+                                }
+                            }
                         }
-                    }
+                    );
                 }
-            );
-        } else {
-            // 图表生成模式
-            await sendChatMessage(
-                trimmedInput,
-                // onChunk
-                (chunk) => {
-                    appendStreamingContent(chunk);
-                },
-                // onComplete
-                (fullContent) => {
-                    setIsLoading(false);
-
-                    // 更新最后一条消息
-                    const currentMessages = useAIStore.getState().messages;
-                    if (currentMessages.length > 0) {
-                        const lastIndex = currentMessages.length - 1;
-                        if (currentMessages[lastIndex].role === 'assistant') {
-                            currentMessages[lastIndex].content = fullContent;
-                            useAIStore.setState({ messages: [...currentMessages] });
-                        }
-                    }
-
-                    setStreamingContent('');
-
-                    // 尝试解析图表数据并应用
-                    const graphData = parseGraphJSON(fullContent);
-                    if (graphData) {
-                        try {
-                            applyGraphData(graphData, false);
-                            // 添加成功提示
-                            addMessage('assistant', '✅ 图表已成功生成并添加到画布！');
-                        } catch (error) {
-                            console.error('Failed to apply graph data:', error);
-                        }
-                    }
-                },
-                // onError
-                (error) => {
-                    setIsLoading(false);
-                    setStreamingContent('');
-                    setError(error);
-
-                    // 更新最后一条消息为错误信息
-                    const currentMessages = useAIStore.getState().messages;
-                    if (currentMessages.length > 0) {
-                        const lastIndex = currentMessages.length - 1;
-                        if (currentMessages[lastIndex].role === 'assistant' && !currentMessages[lastIndex].content) {
-                            currentMessages[lastIndex].content = `❌ 错误: ${error}`;
-                            useAIStore.setState({ messages: [...currentMessages] });
-                        }
-                    }
-                }
-            );
+            }
+        } catch (error: any) {
+            setIsLoading(false);
+            setStreamingContent('');
+            setError(error.message || 'Unknown error');
         }
     };
 

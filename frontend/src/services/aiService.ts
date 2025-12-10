@@ -459,18 +459,12 @@ export function applyGraphData(data: { nodes: any[]; edges: any[] }, clearExisti
                 anchor: targetAnchor,
                 connectionPoint: 'boundary',
             },
-            // 使用 router 让边自动绑定到最近的节点边缘
+            // 使用直线连接，不使用 manhattan 路由避免弯曲
             router: {
-                name: 'manhattan',
-                args: {
-                    padding: 20,
-                },
+                name: 'normal',
             },
             connector: {
-                name: 'rounded',
-                args: {
-                    radius: 8,
-                },
+                name: 'normal',
             },
             attrs: {
                 line: {

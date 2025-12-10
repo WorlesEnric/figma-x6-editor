@@ -10,6 +10,7 @@ const fs = require('fs');
 
 // Import AI routes
 const aiRoutes = require('./routes/ai');
+const aiStreamRoutes = require('./routes/ai-stream');
 
 const app = express();
 const PORT = 3001;
@@ -260,6 +261,7 @@ app.delete('/api/assets/:id', (req, res) => {
 // ============== AI Routes ==============
 
 app.use('/api/ai', aiRoutes);
+app.use('/api/ai-stream', aiStreamRoutes);
 
 // ============== Health Check ==============
 
